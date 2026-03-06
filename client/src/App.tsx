@@ -1,36 +1,66 @@
-import { Outlet, Route, Routes } from 'react-router';
-import BaseLayout from './views/BaseLayout';
-import Home from './views/Home';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import './index.css';
-import { Toaster } from 'react-hot-toast';
-import Sessions from './views/Sessions';
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 
-function App() {
-  return (
-    <>
-      <Routes>
-        <Route
-          element={
-            <BaseLayout>
-              <Outlet />
-            </BaseLayout>
-          }
-        >
-          <Route path={'/'} element={<Home />} />
-          <Route path={'/sessions'} element={<Sessions />} />
-        </Route>
-      </Routes>
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          error: {
-            duration: 5000,
-          },
-        }}
-      />
-    </>
-  );
+import Login from "./views/Login";
+import Register from "./views/Register";
+import Dashboard from "./views/Dashboard";
+import { getCurrentUser } from "./api/auth";
+
+// Protected Route Component
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Verify token with server
+        await getCurrentUser();
+        setIsAuthenticated(true);
+      } catch (error) {
+        // Token is invalid or expired
+        localStorage.removeItem("token");
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  if (isLoading) {
+    return <div style={{ textAlign: "center", padding: "50px" }}>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
 }
 
-export default App;
+export default function App() {
+
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      } />
+    </Routes>
+  );
+
+}
