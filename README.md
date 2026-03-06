@@ -147,3 +147,50 @@ UI mockups and design layouts for this project can be found at:
 - Improve UI consistency and usability
 - Generate sample data and reports
 - Prepare project documentation and presentation
+
+---
+
+## Local Development Setup
+
+Follow these steps to get the project running on your machine.
+
+1. **Start the database**
+   ```powershell
+   docker-compose up -d mysql
+   ```
+   (maps port 3307 to 3306 by default; adjust if needed)
+
+2. **Copy environment file and generate keys**
+   ```powershell
+   cd server
+   cp .env.example .env
+   php artisan key:generate
+   php artisan jwt:secret      # populates JWT_SECRET
+   ```
+
+3. **Edit `server/.env`** with your DB credentials (host `127.0.0.1`, port `3307`,
+   database `studybridge`, user `root`, password `root`).
+
+4. **Run migrations** to create tables (including `users`):
+   ```bash
+   php artisan migrate
+   ```
+
+5. **Start the Laravel backend** (default http://localhost:8000):
+   ```bash
+   php artisan serve
+   ```
+
+6. **Install frontend deps and run dev server**
+   ```bash
+   cd ../client
+   npm install              # also installs Tailwind/PostCSS
+   npm run dev              # Vite will compile Tailwind CSS automatically
+   ```
+
+   Vite is configured to proxy `/api` → `http://localhost:8000` so the React app
+   can call the backend without CORS problems.
+
+Once everything is up, you should be able to register/login and see the
+Tailwind‑styled login and dashboard pages.
+
