@@ -11,7 +11,7 @@ export default defineConfig({
     // If you consume a backend, proxy requests instead of hardcoding the
     // address everywhere.  This also removes CORS headaches.
     proxy: {
-      '/api': 'http://localhost:3001',
+      '/api': 'http://localhost:8000',
     },
   },
 
