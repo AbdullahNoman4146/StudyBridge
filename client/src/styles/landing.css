@@ -1,0 +1,142 @@
+.landing-page {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+.landing-page html,
+.landing-page body {
+  scroll-behavior: smooth;
+}
+
+.destination-card {
+  position: relative;
+  min-height: 340px;
+  overflow: hidden;
+  border-radius: 28px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.1);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.destination-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
+}
+
+.destination-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(2, 6, 23, 0.16),
+    rgba(2, 6, 23, 0.48)
+  );
+}
+
+.destination-label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 3.1rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-align: center;
+}
+
+.destination-uk {
+  background-image:
+    linear-gradient(rgba(2, 6, 23, 0.14), rgba(2, 6, 23, 0.42)),
+    url("https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1400&q=80");
+}
+
+.destination-usa {
+  background-image:
+    linear-gradient(rgba(2, 6, 23, 0.14), rgba(2, 6, 23, 0.42)),
+    url("https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=1400&q=80");
+}
+
+.destination-canada {
+  background-image:
+    linear-gradient(rgba(2, 6, 23, 0.14), rgba(2, 6, 23, 0.42)),
+    url("https://images.unsplash.com/photo-1517935706615-2717063c2225?auto=format&fit=crop&w=1400&q=80");
+}
+
+.destination-malaysia {
+  background-image:
+    linear-gradient(rgba(2, 6, 23, 0.14), rgba(2, 6, 23, 0.42)),
+    url("https://images.unsplash.com/photo-1536599018102-9f803c140fc1?auto=format&fit=crop&w=1400&q=80");
+}
+
+.destination-japan {
+  background-image:
+    linear-gradient(rgba(2, 6, 23, 0.14), rgba(2, 6, 23, 0.42)),
+    url("https://images.unsplash.com/photo-1492571350019-22de08371fd3?auto=format&fit=crop&w=1400&q=80");
+}
+
+.destination-australia {
+  background-image:
+    linear-gradient(rgba(2, 6, 23, 0.14), rgba(2, 6, 23, 0.42)),
+    url("https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?auto=format&fit=crop&w=1400&q=80");
+}
+
+.footer-icon-link {
+  display: inline-flex;
+  height: 72px;
+  width: 72px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.footer-icon-link:hover {
+  background: rgba(37, 99, 235, 0.3);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.about-highlight-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 18px;
+  border: 1px solid #dbe2ea;
+  background: #f8fafc;
+  padding: 1rem 1.1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+  transition: all 0.2s ease;
+}
+
+.about-highlight-card:hover {
+  transform: translateY(-2px);
+  border-color: #93c5fd;
+  background: #eff6ff;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
+}
+
+.vision-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 0.95rem 1rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: white;
+  backdrop-filter: blur(6px);
+  transition: all 0.2s ease;
+}
+
+.vision-pill:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.18);
+}

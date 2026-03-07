@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
+import AboutPage from "./views/AboutPage.tsx";
+import LandingPage from "./views/LandingPage.tsx";
 import Login from "./views/Login";
 import Register from "./views/Register";
 import Dashboard from "./views/AdminDashboard";
@@ -65,15 +67,18 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
 
 function RoleRedirect() {
   const role = localStorage.getItem("role");
+
   if (role === "admin") return <Navigate to="/admin-dashboard" replace />;
   if (role === "student") return <Navigate to="/student-dashboard" replace />;
+
   return <Navigate to="/login" replace />;
 }
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/about" element={<AboutPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
