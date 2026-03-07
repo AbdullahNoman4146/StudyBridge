@@ -4,14 +4,12 @@ import { useState, useEffect } from "react";
 import Login from "./views/Login";
 import Register from "./views/Register";
 import Dashboard from "./views/AdminDashboard";
-import AgentDashboard from "./views/AgentDashboard";
 import StudentDashboard from "./views/StudentDashboard";
 import { getCurrentUser } from "./api/auth";
 
-// Protected Route Component
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: string[]; // if provided, user must have one of these roles
+  allowedRoles?: string[];
 }
 
 function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
@@ -21,7 +19,6 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem("token");
-      const role = localStorage.getItem("role");
 
       if (!token) {
         setIsAuthenticated(false);
@@ -29,21 +26,23 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
         return;
       }
 
-      if (allowedRoles && role && !allowedRoles.includes(role)) {
-        // user is logged in but not in the correct role
-        localStorage.removeItem("token");
-        setIsAuthenticated(false);
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        // Verify token with server
-        await getCurrentUser();
+        const user = await getCurrentUser();
+
+        localStorage.setItem("role", user.role);
+        localStorage.setItem("user", JSON.stringify(user));
+
+        if (allowedRoles && !allowedRoles.includes(user.role)) {
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
+
         setIsAuthenticated(true);
       } catch (error) {
-        // Token is invalid or expired
         localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        localStorage.removeItem("user");
         setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
@@ -64,18 +63,14 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   return <>{children}</>;
 }
 
-
-// convenient component for redirecting generic /dashboard path
 function RoleRedirect() {
-  const role = localStorage.getItem('role');
-  if (role === 'admin') return <Navigate to="/admin-dashboard" replace />;
-  if (role === 'agent') return <Navigate to="/agent-dashboard" replace />;
-  if (role === 'student') return <Navigate to="/student-dashboard" replace />;
+  const role = localStorage.getItem("role");
+  if (role === "admin") return <Navigate to="/admin-dashboard" replace />;
+  if (role === "student") return <Navigate to="/student-dashboard" replace />;
   return <Navigate to="/login" replace />;
 }
 
 export default function App() {
-
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
@@ -92,15 +87,6 @@ export default function App() {
       />
 
       <Route
-        path="/agent-dashboard"
-        element={
-          <ProtectedRoute allowedRoles={["agent"]}>
-            <AgentDashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
         path="/student-dashboard"
         element={
           <ProtectedRoute allowedRoles={["student"]}>
@@ -109,9 +95,7 @@ export default function App() {
         }
       />
 
-      {/* generic dashboard path, will bounce to the appropriate dashboard */}
       <Route path="/dashboard" element={<RoleRedirect />} />
     </Routes>
   );
-
 }

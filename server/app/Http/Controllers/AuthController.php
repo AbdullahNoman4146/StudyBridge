@@ -4,61 +4,101 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\StudentProfile;
 use Illuminate\Support\Facades\Hash;
-use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
-
     public function register(Request $request)
     {
+        $request->validate([
+            'name' => 'required|string|max:100',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
+            'phone' => 'nullable|string|max:30',
+            'address' => 'nullable|string|max:255',
+        ]);
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role_id' => $request->role_id ?? 3
+            'role' => 'student',
+            'country_id' => null,
+            'must_change_password' => false,
+            'status' => 'active',
         ]);
 
-        $token = JWTAuth::fromUser($user);
+        StudentProfile::create([
+            'user_id' => $user->id,
+            'phone' => $request->phone,
+            'address' => $request->address,
+        ]);
+
+        $token = auth('api')->login($user);
+
+        $freshUser = User::with('studentProfile')->find($user->id);
 
         return response()->json([
-            'user' => $user,
-            'token' => $token
+            'message' => 'Student registered successfully',
+            'token' => $token,
+            'user' => $freshUser
         ]);
     }
-
 
     public function login(Request $request)
     {
-        $credentials = $request->only('email','password');
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
 
-        if(!$token = auth()->attempt($credentials))
-        {
+        $credentials = $request->only('email', 'password');
+
+        if (!$token = auth('api')->attempt($credentials)) {
             return response()->json([
-                'error' => 'Invalid credentials'
-            ],401);
+                'message' => 'Invalid credentials'
+            ], 401);
+        }
+
+        $user = auth('api')->user();
+
+        if ($user->status !== 'active') {
+            auth('api')->logout();
+
+            return response()->json([
+                'message' => 'This account is inactive'
+            ], 403);
+        }
+
+        if ($user->role === 'student') {
+            $user = User::with('studentProfile')->find($user->id);
         }
 
         return response()->json([
+            'message' => 'Login successful',
             'token' => $token,
-            'user' => auth()->user()
+            'user' => $user
         ]);
     }
 
-
     public function me()
     {
-        return response()->json(auth()->user());
-    }
+        $user = auth('api')->user();
 
+        if ($user->role === 'student') {
+            $user = User::with('studentProfile')->find($user->id);
+        }
+
+        return response()->json($user);
+    }
 
     public function logout()
     {
-        auth()->logout();
+        auth('api')->logout();
 
         return response()->json([
             'message' => 'Successfully logged out'
         ]);
     }
-
 }

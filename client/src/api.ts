@@ -1,93 +1,97 @@
-import axios, { AxiosInstance } from 'axios';
-import { secrets } from './secrets';
-import toast from 'react-hot-toast';
+const API = import.meta.env.VITE_BACKEND_ENDPOINT
+  ? import.meta.env.VITE_BACKEND_ENDPOINT + "/api"
+  : "/api";
 
-class ApiClient {
-  private client: AxiosInstance;
+export async function login(email: string, password: string) {
+  const res = await fetch(`${API}/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email, password })
+  });
 
-  constructor() {
-    this.client = axios.create({
-      baseURL: secrets.backendEndpoint,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || `Server error: ${res.status}`);
   }
 
-  // currently, only fetches 1 session greater than current time
-  async getSession() {
-    try {
-      const response = await this.client.get('/api/session');
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async createSession(name: string, duration: number, username: string, password: string) {
-    try {
-      if (!username || !password) {
-        toast.error('Credentials are required');
-        return;
-      }
-      const response = await this.client.post('/api/session', { name, duration, username, password });
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async updateSession(session_id: number, active: boolean, username: string, password: string) {
-    try {
-      if (!username || !password) {
-        toast.error('Credentials are required');
-        return;
-      }
-
-      const response = await this.client.put('/api/session', { session_id, active, username, password });
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async submitAttendance(roll: number) {
-    try {
-      const response = await this.client.post('/api/attendance', { roll });
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  async viewSessions(username: string, password: string) {
-    try {
-      if (!username || !password) {
-        toast.error('Credentials are required');
-        return;
-      }
-      const response = await this.client.post('/api/sessions', { username, password });
-      return response.data;
-    } catch (error) {
-      this.handleError(error);
-    }
-  }
-
-  // Handle common errors
-  handleError(error: any) {
-    if (error.response) {
-      // Server responded with a status other than 2xx
-      console.error(`API Error: ${error.response.status} - ${error.response.data.message}`);
-    } else if (error.request) {
-      // Request was made, but no response was received
-      console.error('API Error: No response received', error.request);
-    } else {
-      // Something went wrong while setting up the request
-      console.error('API Error:', error.message);
-    }
-
-    toast.error(error.message || 'Something went wrong');
-  }
+  return data;
 }
 
-export default ApiClient;
+export async function register(
+  name: string,
+  email: string,
+  password: string,
+  phone?: string,
+  address?: string
+) {
+  const res = await fetch(`${API}/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    body: JSON.stringify({
+      name,
+      email,
+      password,
+      phone,
+      address
+    })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    if (data.errors) {
+      const firstError = Object.values(data.errors)[0];
+      if (Array.isArray(firstError)) {
+        throw new Error(firstError[0]);
+      }
+    }
+
+    throw new Error(data.message || `Server error: ${res.status}`);
+  }
+
+  return data;
+}
+
+
+export async function getCurrentUser() {
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(`${API}/me`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || `Server error: ${res.status}`);
+  }
+
+  return data;
+}
+
+export async function logout() {
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(`${API}/logout`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || `Server error: ${res.status}`);
+  }
+
+  return data;
+}
