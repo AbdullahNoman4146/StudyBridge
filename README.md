@@ -127,25 +127,60 @@ UI mockups and design layouts for this project can be found at:
 
 ---
 
+## API Endpoints (Examples)
 
-## Project Milestones
+### Frontend Routes:
 
-### Milestone 1: Requirement Analysis & System Design
-- Identify problems in current student consultancy operations
-- Define system objectives and scope
-- Finalize user roles (Admin, Agent, Student)
-- Design system architecture, database schema (ER diagram), and UI wireframes
+- /login
+- /register
+- /admin-dashboard
+- /agent-dashboard
+- /student-dashboard
+- /students
+- /students/:id
+- /application-workflow
+- /application-pipeline
+- /country-visa-setup
+- /document-center
+- /settings
 
-### Milestone 2: Core Module Development
-- Implement authentication and role-based access control
-- Develop dashboards for Admin, Agent, and Student
-- Implement student management and application workflow
-- Integrate document upload and basic validation
+### Authentication:
+- POST /api/login
+- POST /api/register
+- GET /api/me
+- POST /api/logout
+- POST /api/change-password
 
-### Milestone 3: Testing, Refinement & Final Submission
-- Test system functionality and fix bugs
-- Improve UI consistency and usability
-- Generate sample data and reports
+### Admin API
+- GET /api/admin/dashboard
+- POST /api/admin/agents
+- GET /api/admin/students
+- GET /api/admin/students/{id}
+
+### Agent API
+- GET /api/agent/dashboard
+- GET /api/agent/students
+- GET /api/agent/tasks
+
+### Student API
+- GET /api/student/dashboard
+- GET /api/student/profile
+- PUT /api/student/profile
+
+### Countries API
+- GET /api/countries
+- GET /api/visa-checklists
+
+### Workflow API
+- GET /api/workflow
+- GET /api/pipeline
+
+### Documents API
+- GET /api/documents
+- POST /api/documents/upload
+- PUT /api/documents/{id}/status
+
+
 - Prepare project documentation and presentation
 
 ---
@@ -194,3 +229,36 @@ Follow these steps to get the project running on your machine.
 Once everything is up, you should be able to register/login and see the
 Tailwind‑styled login and dashboard pages.
 
+---
+
+## Milestone Breakdown
+
+### Milestone 1 
+- Homepage
+- Student login
+- Admin login
+- JWT authentication working
+- Basic admin dashboard access working
+- Basic student dashboard access working
+- Users and student_profiles database tables created
+
+### Milestone 2
+- Admin creates agent accounts
+- Agent login added
+- Agent changes password after first login
+- Agent dashboard implementation
+- Student list page
+- Student profile page with tabs
+- Application workflow page
+- Application pipeline page
+- Basic notifications inside dashboards
+
+### Milestone 3
+- Country & Visa Setup page
+- Document Center page
+- Settings & User Management page
+- Country and visa checklist management
+- Document upload and status management
+- Final system integration
+- Final testing and debugging
+- Final project presentation readiness
