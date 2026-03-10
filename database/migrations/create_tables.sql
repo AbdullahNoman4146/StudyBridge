@@ -1,5 +1,20 @@
 DROP TABLE IF EXISTS student_profiles;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS countries;
+
+CREATE TABLE countries (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO countries (name) VALUES
+('Canada'),
+('Australia'),
+('United Kingdom'),
+('United States'),
+('Germany');
 
 CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -11,7 +26,9 @@ CREATE TABLE users (
   must_change_password TINYINT(1) NOT NULL DEFAULT 0,
   status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_users_country
+    FOREIGN KEY (country_id) REFERENCES countries(id) ON DELETE SET NULL
 );
 
 CREATE TABLE student_profiles (
