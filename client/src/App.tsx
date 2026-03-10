@@ -1,16 +1,18 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import type { ReactNode } from "react";
 
-import AboutPage from "./views/AboutPage.tsx";
-import LandingPage from "./views/LandingPage.tsx";
+import AboutPage from "./views/AboutPage";
+import LandingPage from "./views/LandingPage";
 import Login from "./views/Login";
 import Register from "./views/Register";
-import Dashboard from "./views/AdminDashboard";
+import AdminDashboard from "./views/AdminDashboard";
+import AgentDashboard from "./views/AgentDashboard";
 import StudentDashboard from "./views/StudentDashboard";
 import { getCurrentUser } from "./api/auth";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
   allowedRoles?: string[];
 }
 
@@ -69,6 +71,7 @@ function RoleRedirect() {
   const role = localStorage.getItem("role");
 
   if (role === "admin") return <Navigate to="/admin-dashboard" replace />;
+  if (role === "agent") return <Navigate to="/agent-dashboard" replace />;
   if (role === "student") return <Navigate to="/student-dashboard" replace />;
 
   return <Navigate to="/login" replace />;
@@ -86,7 +89,16 @@ export default function App() {
         path="/admin-dashboard"
         element={
           <ProtectedRoute allowedRoles={["admin"]}>
-            <Dashboard />
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/agent-dashboard"
+        element={
+          <ProtectedRoute allowedRoles={["agent"]}>
+            <AgentDashboard />
           </ProtectedRoute>
         }
       />

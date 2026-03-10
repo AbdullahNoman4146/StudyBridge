@@ -6,7 +6,7 @@ export default defineConfig({
   server: {
     // lock the dev server port so it doesn't shift when the previous instance
     // is still running or another process is using 5173.
-    port: 5176,
+    port: 5192,
 
     // If you consume a backend, proxy requests instead of hardcoding the
     // address everywhere.  This also removes CORS headaches.

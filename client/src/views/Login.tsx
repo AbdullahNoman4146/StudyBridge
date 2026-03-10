@@ -1,42 +1,44 @@
-import { Mail, Lock } from 'lucide-react';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { login } from '../api/auth';
+import { Mail, Lock } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { login } from "../api/auth";
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
       const data = await login(email, password);
 
       if (data.token && data.user) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('role', data.user.role);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("role", data.user.role);
+        localStorage.setItem("user", JSON.stringify(data.user));
 
-        if (data.user.role === 'admin') {
-          navigate('/admin-dashboard');
-        } else if (data.user.role === 'student') {
-          navigate('/student-dashboard');
+        if (data.user.role === "admin") {
+          navigate("/admin-dashboard");
+        } else if (data.user.role === "agent") {
+          navigate("/agent-dashboard");
+        } else if (data.user.role === "student") {
+          navigate("/student-dashboard");
         } else {
-          setError('This role is not enabled yet.');
+          setError("This role is not enabled yet.");
         }
       } else {
-        setError(data.message || 'Invalid login credentials');
+        setError(data.message || "Invalid login credentials");
       }
     } catch (err: any) {
-      setError('Login failed: ' + (err.message || 'Server error'));
-      console.error('Login error:', err);
+      setError("Login failed: " + (err.message || "Server error"));
+      console.error("Login error:", err);
     } finally {
       setLoading(false);
     }
@@ -62,7 +64,10 @@ export default function Login() {
               Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Mail
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={20}
+              />
               <input
                 type="email"
                 placeholder="Enter your email"
@@ -79,7 +84,10 @@ export default function Login() {
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+              <Lock
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={20}
+              />
               <input
                 type="password"
                 placeholder="Enter your password"
@@ -96,12 +104,17 @@ export default function Login() {
             disabled={loading}
             className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-600">
-          <p>Don't have an account? <a href="/register" className="text-blue-600 hover:text-blue-700 font-medium">Register here</a></p>
+          <p>
+            Don&apos;t have an account?{" "}
+            <a href="/register" className="text-blue-600 hover:text-blue-700 font-medium">
+              Register here
+            </a>
+          </p>
           <p className="mt-4">© 2024 StudyBridge. Academic Web Project.</p>
         </div>
       </div>
