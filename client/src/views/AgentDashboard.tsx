@@ -7,6 +7,7 @@ import {
   Lock
 } from "lucide-react";
 import { changeAgentPassword, getCurrentUser, logout } from "../api/auth";
+import { clearAuthSession } from "../helpers/authStorage";
 
 export default function AgentDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -27,9 +28,7 @@ export default function AgentDashboard() {
         localStorage.setItem("user", JSON.stringify(data));
         localStorage.setItem("role", data.role);
       } catch (error) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("role");
-        localStorage.removeItem("user");
+        clearAuthSession();
         window.location.href = "/login";
       } finally {
         setLoading(false);
@@ -45,9 +44,7 @@ export default function AgentDashboard() {
     } catch (error) {
       console.error(error);
     } finally {
-      localStorage.removeItem("token");
-      localStorage.removeItem("role");
-      localStorage.removeItem("user");
+      clearAuthSession();
       window.location.href = "/login";
     }
   };
@@ -91,7 +88,7 @@ export default function AgentDashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex min-h-[calc(100vh-88px)] bg-gray-100">
       <aside className="w-64 bg-white shadow-md flex flex-col">
         <div className="p-6 border-b">
           <h1 className="text-2xl font-bold text-blue-600">StudyBridge</h1>

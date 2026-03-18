@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentUser, logout } from "../api/auth";
+import { clearAuthSession } from "../helpers/authStorage";
 
 export default function StudentDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -13,9 +14,7 @@ export default function StudentDashboard() {
         const data = await getCurrentUser();
         setUser(data);
       } catch (error) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("role");
-        localStorage.removeItem("user");
+        clearAuthSession();
         navigate("/login");
       } finally {
         setLoading(false);
@@ -31,9 +30,7 @@ export default function StudentDashboard() {
     } catch (error) {
       console.error(error);
     } finally {
-      localStorage.removeItem("token");
-      localStorage.removeItem("role");
-      localStorage.removeItem("user");
+      clearAuthSession();
       navigate("/login");
     }
   };
@@ -43,7 +40,7 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="min-h-[calc(100vh-88px)] bg-gray-100 p-8">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-blue-600">Student Dashboard</h1>

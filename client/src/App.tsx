@@ -9,7 +9,9 @@ import Register from "./views/Register";
 import AdminDashboard from "./views/AdminDashboard";
 import AgentDashboard from "./views/AgentDashboard";
 import StudentDashboard from "./views/StudentDashboard";
+import MainLayout from "./layouts/MainLayout";
 import { getCurrentUser } from "./api/auth";
+import { clearAuthSession } from "./helpers/authStorage";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -44,9 +46,7 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
 
         setIsAuthenticated(true);
       } catch (error) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("role");
-        localStorage.removeItem("user");
+        clearAuthSession();
         setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
@@ -80,39 +80,41 @@ function RoleRedirect() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/about" element={<AboutPage />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route element={<MainLayout />}>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-      <Route
-        path="/admin-dashboard"
-        element={
-          <ProtectedRoute allowedRoles={["admin"]}>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/admin-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/agent-dashboard"
-        element={
-          <ProtectedRoute allowedRoles={["agent"]}>
-            <AgentDashboard />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/agent-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["agent"]}>
+              <AgentDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/student-dashboard"
-        element={
-          <ProtectedRoute allowedRoles={["student"]}>
-            <StudentDashboard />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/student-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["student"]}>
+              <StudentDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route path="/dashboard" element={<RoleRedirect />} />
+        <Route path="/dashboard" element={<RoleRedirect />} />
+      </Route>
     </Routes>
   );
 }
