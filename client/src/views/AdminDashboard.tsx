@@ -10,6 +10,7 @@ import {
   getStudentsList,
   logout
 } from "../api/auth";
+import { clearAuthSession } from "../helpers/authStorage";
 
 import {
   LayoutDashboard,
@@ -144,9 +145,7 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      localStorage.removeItem("token");
-      localStorage.removeItem("role");
-      localStorage.removeItem("user");
+      clearAuthSession();
       window.location.href = "/login";
     }
   };
@@ -223,7 +222,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex min-h-[calc(100vh-88px)] bg-gray-100">
       <aside className="w-64 bg-white shadow-md flex flex-col">
         <div className="p-6 border-b">
           <h1 className="text-2xl font-bold text-blue-600">StudyBridge</h1>
