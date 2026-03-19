@@ -1,11 +1,11 @@
-const API = import.meta.env.VITE_BACKEND_ENDPOINT
+export const API = import.meta.env.VITE_BACKEND_ENDPOINT
     ? import.meta.env.VITE_BACKEND_ENDPOINT + "/api"
     : "/api";
 
-async function handleResponse(res: Response) {
+export async function handleResponse(res: Response): Promise<any> {
     const text = await res.text();
 
-    let data: any = null;
+    let data: unknown = null;
     try {
         data = text ? JSON.parse(text) : null;
     } catch {
@@ -13,7 +13,20 @@ async function handleResponse(res: Response) {
     }
 
     if (!res.ok) {
-        throw new Error(data?.message || `Server error: ${res.status}`);
+        if (typeof data === "object" && data !== null && "errors" in data) {
+            const errors = (data as { errors?: Record<string, string[]> }).errors;
+            if (errors) {
+                const firstKey = Object.keys(errors)[0];
+                const firstError = firstKey ? errors[firstKey]?.[0] : undefined;
+                throw new Error(firstError || "Validation failed");
+            }
+        }
+
+        if (typeof data === "object" && data !== null && "message" in data) {
+            throw new Error(String((data as { message?: string }).message || `Server error: ${res.status}`));
+        }
+
+        throw new Error(`Server error: ${res.status}`);
     }
 
     return data;

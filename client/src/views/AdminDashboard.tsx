@@ -224,10 +224,6 @@ export default function AdminDashboard() {
   return (
     <div className="flex min-h-[calc(100vh-88px)] bg-gray-100">
       <aside className="w-64 bg-white shadow-md flex flex-col">
-        <div className="p-6 border-b">
-          <h1 className="text-2xl font-bold text-blue-600">StudyBridge</h1>
-        </div>
-
         <nav className="flex-1 p-4">
           <a href="/admin-dashboard" className="flex items-center gap-3 px-4 py-3 text-white bg-blue-600 rounded-lg mb-2">
             <LayoutDashboard size={20} /> Dashboard
