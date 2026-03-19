@@ -6,6 +6,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -35,6 +36,26 @@ class User extends Authenticatable implements JWTSubject
     public function country(): BelongsTo
     {
         return $this->belongsTo(Country::class, 'country_id');
+    }
+
+    public function scholarships(): HasMany
+    {
+        return $this->hasMany(Scholarship::class, 'agent_id');
+    }
+
+    public function studentApplications(): HasMany
+    {
+        return $this->hasMany(ScholarshipApplication::class, 'student_id');
+    }
+
+    public function assignedApplications(): HasMany
+    {
+        return $this->hasMany(ScholarshipApplication::class, 'agent_id');
+    }
+
+    public function applicationMessages(): HasMany
+    {
+        return $this->hasMany(ApplicationMessage::class, 'sender_id');
     }
 
     public function getJWTIdentifier()
