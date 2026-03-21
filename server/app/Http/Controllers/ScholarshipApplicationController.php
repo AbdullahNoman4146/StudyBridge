@@ -7,11 +7,93 @@ use App\Models\ApplicationMessage;
 use App\Models\Scholarship;
 use App\Models\ScholarshipApplication;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class ScholarshipApplicationController extends Controller
 {
+    private function normalizeUploadedDocuments(Request $request): array
+    {
+        $files = $request->file('documents');
+
+        if ($files instanceof UploadedFile) {
+            return [$files];
+        }
+
+        if (is_array($files)) {
+            return array_values(array_filter($files, fn ($file) => $file instanceof UploadedFile));
+        }
+
+        $allFiles = $request->allFiles();
+
+        if (isset($allFiles['documents']) && $allFiles['documents'] instanceof UploadedFile) {
+            return [$allFiles['documents']];
+        }
+
+        if (isset($allFiles['documents']) && is_array($allFiles['documents'])) {
+            return array_values(array_filter($allFiles['documents'], fn ($file) => $file instanceof UploadedFile));
+        }
+
+        return [];
+    }
+
+    private function validateUploadedDocuments(array $files): ?array
+    {
+        if (count($files) === 0) {
+            return [
+                'message' => 'Please upload at least one document.'
+            ];
+        }
+
+        if (count($files) > 10) {
+            return [
+                'message' => 'You can upload up to 10 documents at a time.'
+            ];
+        }
+
+        foreach ($files as $file) {
+            $validator = Validator::make([
+                'document' => $file,
+            ], [
+                'document' => 'file|mimes:pdf,jpg,jpeg,png,doc,docx|max:10240',
+            ]);
+
+            if ($validator->fails()) {
+                return [
+                    'message' => $validator->errors()->first('document') ?: 'One or more uploaded files are invalid.'
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    private function storeApplicationDocuments(int $applicationId, array $files): void
+    {
+        foreach ($files as $file) {
+            $originalName = $file->getClientOriginalName();
+            $storedName = uniqid('doc_', true) . '_' . preg_replace('/\s+/', '_', $originalName);
+            $relativePath = 'scholarship-applications/' . $applicationId . '/' . $storedName;
+
+            Storage::disk('local')->putFileAs(
+                'scholarship-applications/' . $applicationId,
+                $file,
+                $storedName
+            );
+
+            ApplicationDocument::create([
+                'application_id' => $applicationId,
+                'original_name' => $originalName,
+                'stored_name' => $storedName,
+                'file_path' => $relativePath,
+                'mime_type' => $file->getClientMimeType(),
+                'file_size' => $file->getSize(),
+            ]);
+        }
+    }
+
     private function ensureStudent()
     {
         $user = auth('api')->user();
@@ -88,9 +170,14 @@ class ScholarshipApplicationController extends Controller
 
         $request->validate([
             'message' => 'nullable|string|max:2000',
-            'documents' => 'required|array|min:1|max:10',
-            'documents.*' => 'file|mimes:pdf,jpg,jpeg,png,doc,docx|max:10240',
         ]);
+
+        $files = $this->normalizeUploadedDocuments($request);
+        $fileValidationError = $this->validateUploadedDocuments($files);
+
+        if ($fileValidationError) {
+            return response()->json($fileValidationError, 422);
+        }
 
         $scholarship = Scholarship::with('agent:id,name,email')->where('status', 'active')->find($scholarshipId);
 
@@ -112,7 +199,7 @@ class ScholarshipApplicationController extends Controller
 
         $application = null;
 
-        DB::transaction(function () use ($request, $student, $scholarship, &$application) {
+        DB::transaction(function () use ($request, $student, $scholarship, $files, &$application) {
             $application = ScholarshipApplication::create([
                 'scholarship_id' => $scholarship->id,
                 'student_id' => $student->id,
@@ -122,26 +209,7 @@ class ScholarshipApplicationController extends Controller
                 'submitted_at' => now(),
             ]);
 
-            foreach ($request->file('documents', []) as $file) {
-                $originalName = $file->getClientOriginalName();
-                $storedName = uniqid('doc_', true) . '_' . preg_replace('/\s+/', '_', $originalName);
-                $relativePath = 'scholarship-applications/' . $application->id . '/' . $storedName;
-
-                Storage::disk('local')->putFileAs(
-                    'scholarship-applications/' . $application->id,
-                    $file,
-                    $storedName
-                );
-
-                ApplicationDocument::create([
-                    'application_id' => $application->id,
-                    'original_name' => $originalName,
-                    'stored_name' => $storedName,
-                    'file_path' => $relativePath,
-                    'mime_type' => $file->getClientMimeType(),
-                    'file_size' => $file->getSize(),
-                ]);
-            }
+            $this->storeApplicationDocuments($application->id, $files);
 
             if ($request->filled('message')) {
                 ApplicationMessage::create([
@@ -154,6 +222,58 @@ class ScholarshipApplicationController extends Controller
 
         return response()->json([
             'message' => 'Application submitted successfully',
+            'application' => $this->applicationWithRelations($application->id)
+        ], 201);
+    }
+
+    public function submitRequestedDocuments(Request $request, $applicationId)
+    {
+        $student = $this->ensureStudent();
+
+        $request->validate([
+            'message' => 'nullable|string|max:2000',
+        ]);
+
+        $files = $this->normalizeUploadedDocuments($request);
+        $fileValidationError = $this->validateUploadedDocuments($files);
+
+        if ($fileValidationError) {
+            return response()->json($fileValidationError, 422);
+        }
+
+        $application = ScholarshipApplication::where('student_id', $student->id)->find($applicationId);
+
+        if (!$application) {
+            return response()->json([
+                'message' => 'Application not found'
+            ], 404);
+        }
+
+        if ($application->status !== 'needs_documents') {
+            return response()->json([
+                'message' => 'Additional documents can only be submitted when the application status is Needs Documents.'
+            ], 422);
+        }
+
+        DB::transaction(function () use ($application, $files, $request, $student) {
+            $this->storeApplicationDocuments($application->id, $files);
+
+            if ($request->filled('message')) {
+                ApplicationMessage::create([
+                    'application_id' => $application->id,
+                    'sender_id' => $student->id,
+                    'message' => trim((string) $request->message),
+                ]);
+            }
+
+            $application->update([
+                'status' => 'submitted',
+                'submitted_at' => now(),
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Requested documents submitted successfully',
             'application' => $this->applicationWithRelations($application->id)
         ], 201);
     }
@@ -205,6 +325,12 @@ class ScholarshipApplicationController extends Controller
             'status' => 'required|in:submitted,under_review,needs_documents,approved,rejected',
             'agent_note' => 'nullable|string|max:2000',
         ]);
+
+        if ($request->status === 'needs_documents' && trim((string) $request->agent_note) === '') {
+            return response()->json([
+                'message' => 'Please tell the student which documents are needed before setting this status.'
+            ], 422);
+        }
 
         $application = ScholarshipApplication::where('agent_id', $agent->id)->find($applicationId);
 

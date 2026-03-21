@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Country;
 use App\Models\StudentProfile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
 {
@@ -126,7 +127,14 @@ class AuthController extends Controller
             'name' => 'required|string|max:100',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
-            'country_id' => 'required|integer|exists:countries,id',
+            'country_id' => [
+                'required',
+                'integer',
+                'exists:countries,id',
+                Rule::unique('users', 'country_id')->where(function ($query) {
+                    return $query->where('role', 'agent');
+                }),
+            ],
         ]);
 
         $agent = User::create([

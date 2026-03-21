@@ -31,6 +31,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/student/scholarships', [ScholarshipController::class, 'studentIndex']);
     Route::post('/student/scholarships/{id}/apply', [ScholarshipApplicationController::class, 'apply']);
     Route::get('/student/applications', [ScholarshipApplicationController::class, 'studentIndex']);
+    Route::post('/student/applications/{id}/documents', [ScholarshipApplicationController::class, 'submitRequestedDocuments']);
 
     Route::post('/applications/{id}/messages', [ScholarshipApplicationController::class, 'sendMessage']);
     Route::get('/documents/{id}/download', [ScholarshipApplicationController::class, 'download']);

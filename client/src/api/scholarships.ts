@@ -171,6 +171,24 @@ export async function getStudentApplications(): Promise<ScholarshipApplication[]
     return handleResponse(res) as Promise<ScholarshipApplication[]>;
 }
 
+export async function submitRequestedDocuments(applicationId: number, message: string, files: File[]) {
+    const formData = new FormData();
+
+    if (message.trim()) {
+        formData.append("message", message.trim());
+    }
+
+    files.forEach((file) => formData.append("documents[]", file));
+
+    const res = await fetch(`${API}/student/applications/${applicationId}/documents`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: formData
+    });
+
+    return handleResponse(res) as Promise<{ message: string; application: ScholarshipApplication }>;
+}
+
 export async function getAgentApplications(): Promise<ScholarshipApplication[]> {
     const res = await fetch(`${API}/agent/applications`, {
         headers: getAuthHeaders()

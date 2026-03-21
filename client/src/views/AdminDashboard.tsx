@@ -64,15 +64,17 @@ export default function AdminDashboard() {
 
   const loadInitialData = async () => {
     try {
-      const [userData, countriesData, summaryData] = await Promise.all([
+      const [userData, countriesData, summaryData, agentsData] = await Promise.all([
         getCurrentUser(),
         getCountries(),
-        getAdminSummary()
+        getAdminSummary(),
+        getAgentsList()
       ]);
 
       setUser(userData);
       setCountries(countriesData);
       setSummary(summaryData);
+      setAgents(agentsData);
     } catch (error) {
       console.error(error);
     }
@@ -156,6 +158,16 @@ export default function AdminDashboard() {
     setFormSuccess("");
     setSubmitting(true);
 
+    const isCountryAlreadyAssigned = agents.some(
+      (agent) => Number(agent.country?.id) === Number(form.country_id)
+    );
+
+    if (isCountryAlreadyAssigned) {
+      setFormError("This country already has an assigned agent. Please choose another country.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const data = await createAgent(
         form.name,
@@ -175,6 +187,8 @@ export default function AdminDashboard() {
         country_id: ""
       });
 
+      setAgents((prev) => [data.agent, ...prev.filter((item) => item.id !== data.agent.id)]);
+
       await refreshSummary();
 
       if (activeView === "agents") {
@@ -188,6 +202,15 @@ export default function AdminDashboard() {
   };
 
   if (!user) return <p className="p-6">Loading...</p>;
+
+  const assignedCountryMap = new Map<number, string>();
+  agents.forEach((agent) => {
+    if (agent.country?.id) {
+      assignedCountryMap.set(Number(agent.country.id), agent.name);
+    }
+  });
+
+  const availableCountryCount = countries.filter((country) => !assignedCountryMap.has(country.id)).length;
 
   const alerts = [
     {
@@ -373,16 +396,21 @@ export default function AdminDashboard() {
               >
                 <option value="">Select assigned country</option>
                 {countries.map((country) => (
-                  <option key={country.id} value={country.id}>
-                    {country.name}
+                  <option key={country.id} value={country.id} disabled={assignedCountryMap.has(country.id)}>
+                    {country.name}{assignedCountryMap.has(country.id) ? ` — already assigned to ${assignedCountryMap.get(country.id)}` : ""}
                   </option>
                 ))}
               </select>
 
               <div className="md:col-span-4">
+                <p className="text-sm text-gray-500 mb-3">
+                  {availableCountryCount > 0
+                    ? `${availableCountryCount} country slots are currently available for new agents.`
+                    : "All countries are already assigned. Remove an agent first to free a country slot."}
+                </p>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || availableCountryCount === 0}
                   className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
                 >
                   {submitting ? "Creating agent..." : "Create Agent"}

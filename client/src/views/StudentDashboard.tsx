@@ -24,6 +24,7 @@ import {
   getStudentApplications,
   getStudentScholarships,
   sendApplicationMessage,
+  submitRequestedDocuments,
   type CountryOption,
   type Scholarship,
   type ScholarshipApplication,
@@ -90,6 +91,16 @@ function statusMeta(status: ScholarshipApplication["status"]) {
   }
 }
 
+function mergeSelectedFiles(currentFiles: File[], incomingFiles: File[]) {
+  const fileMap = new Map<string, File>();
+
+  [...currentFiles, ...incomingFiles].forEach((file) => {
+    fileMap.set(`${file.name}-${file.size}-${file.lastModified}`, file);
+  });
+
+  return Array.from(fileMap.values());
+}
+
 function ChatMessageBubble({ item, currentUserId }: { item: ApplicationMessageItem; currentUserId: number }) {
   const isMine = item.sender_id === currentUserId;
 
@@ -125,8 +136,11 @@ export default function StudentDashboard() {
   const [pageError, setPageError] = useState("");
   const [messageSuccess, setMessageSuccess] = useState("");
   const [messageDrafts, setMessageDrafts] = useState<Record<number, string>>({});
+  const [documentResponseDrafts, setDocumentResponseDrafts] = useState<Record<number, string>>({});
+  const [selectedFilesByApplication, setSelectedFilesByApplication] = useState<Record<number, File[]>>({});
   const [isApplying, setIsApplying] = useState(false);
   const [sendingMessageForId, setSendingMessageForId] = useState<number | null>(null);
+  const [submittingDocumentsForId, setSubmittingDocumentsForId] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -255,6 +269,35 @@ export default function StudentDashboard() {
       setPageError(message);
     } finally {
       setSendingMessageForId(null);
+    }
+  };
+
+  const handleSubmitRequestedDocuments = async (applicationId: number) => {
+    const files = selectedFilesByApplication[applicationId] || [];
+    const responseMessage = (documentResponseDrafts[applicationId] || "").trim();
+
+    if (files.length === 0) {
+      setPageError("Please select at least one document before submitting.");
+      return;
+    }
+
+    setPageError("");
+    setApplySuccess("");
+    setMessageSuccess("");
+    setSubmittingDocumentsForId(applicationId);
+
+    try {
+      const response = await submitRequestedDocuments(applicationId, responseMessage, files);
+      setSelectedFilesByApplication((prev) => ({ ...prev, [applicationId]: [] }));
+      setDocumentResponseDrafts((prev) => ({ ...prev, [applicationId]: "" }));
+      await refreshApplications();
+      setMessageSuccess(response.message);
+      setExpandedApplicationId(applicationId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to submit requested documents";
+      setPageError(message);
+    } finally {
+      setSubmittingDocumentsForId(null);
     }
   };
 
@@ -527,25 +570,39 @@ export default function StudentDashboard() {
                               <label className="block text-sm font-semibold text-slate-900 mb-2">Upload documents</label>
                               <label className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-4 cursor-pointer flex flex-col items-center justify-center text-center min-w-[220px] min-h-[130px]">
                                 <Upload size={22} className="text-blue-600 mb-2" />
-                                <span className="text-sm font-medium text-slate-900">Choose files</span>
-                                <span className="text-xs text-slate-500 mt-1">PDF, JPG, PNG, DOC, DOCX · up to 10 files</span>
+                                <span className="text-sm font-medium text-slate-900">Choose one or more files</span>
+                                <span className="text-xs text-slate-500 mt-1">PDF, JPG, PNG, DOC, DOCX · up to 10 files · you can add more in multiple selections</span>
                                 <input
                                   type="file"
                                   multiple
                                   className="hidden"
-                                  onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
+                                  onChange={(e) => {
+                                    const incomingFiles = Array.from(e.target.files || []);
+                                    setSelectedFiles((prev) => mergeSelectedFiles(prev, incomingFiles).slice(0, 10));
+                                    e.currentTarget.value = "";
+                                  }}
                                 />
                               </label>
                             </div>
                           </div>
 
                           {selectedFiles.length > 0 && (
-                            <div className="mt-4 flex flex-wrap gap-2">
-                              {selectedFiles.map((file) => (
-                                <span key={`${file.name}-${file.size}`} className="rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700">
-                                  {file.name}
-                                </span>
-                              ))}
+                            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                              <p className="text-sm font-semibold text-slate-900 mb-3">Selected documents ({selectedFiles.length})</p>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedFiles.map((file) => (
+                                  <span key={`${file.name}-${file.size}-${file.lastModified}`} className="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700">
+                                    {file.name}
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedFiles((prev) => prev.filter((item) => `${item.name}-${item.size}-${item.lastModified}` !== `${file.name}-${file.size}-${file.lastModified}`))}
+                                      className="text-slate-500 hover:text-red-600"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           )}
 
@@ -634,19 +691,131 @@ export default function StudentDashboard() {
                       <div className="mt-6 space-y-5">
                         <div>
                           <p className="text-sm font-semibold text-slate-900 mb-2">Uploaded Documents</p>
-                          <div className="flex flex-wrap gap-3">
-                            {application.documents.map((document) => (
-                              <button
-                                key={document.id}
-                                type="button"
-                                onClick={() => downloadApplicationDocument(document.id, document.original_name)}
-                                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                              >
-                                <Download size={16} /> {document.original_name}
-                              </button>
-                            ))}
-                          </div>
+                          {application.documents.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                              No documents uploaded yet.
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap gap-3">
+                              {application.documents.map((document) => (
+                                <button
+                                  key={document.id}
+                                  type="button"
+                                  onClick={() => downloadApplicationDocument(document.id, document.original_name)}
+                                  className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                >
+                                  <Download size={16} /> {document.original_name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
+
+                        {application.status === "needs_documents" && (
+                          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                            <div className="flex items-center gap-2 mb-3">
+                              <BadgeAlert size={18} className="text-amber-700" />
+                              <h4 className="text-lg font-bold text-amber-900">Additional documents requested</h4>
+                            </div>
+
+                            <p className="text-sm leading-7 text-amber-800">
+                              Your agent has asked for more documents. Upload the missing files here and they will be added to this application immediately.
+                            </p>
+
+                            {(application.scholarship?.required_documents || []).length > 0 && (
+                              <div className="mt-4">
+                                <p className="text-sm font-semibold text-amber-900 mb-2">Scholarship document checklist</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {(application.scholarship?.required_documents || []).map((item) => (
+                                    <span key={item} className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-medium text-amber-800">
+                                      {item}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4">
+                              <div>
+                                <label className="block text-sm font-semibold text-slate-900 mb-2">Response note for agent</label>
+                                <textarea
+                                  value={documentResponseDrafts[application.id] || ""}
+                                  onChange={(e) => setDocumentResponseDrafts((prev) => ({ ...prev, [application.id]: e.target.value }))}
+                                  placeholder="Mention which requested documents you are submitting or add any clarification for the agent"
+                                  className="w-full min-h-[120px] px-4 py-3 rounded-2xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-semibold text-slate-900 mb-2">Upload requested documents</label>
+                                <label className="rounded-2xl border border-dashed border-amber-300 bg-white px-5 py-4 cursor-pointer flex flex-col items-center justify-center text-center min-w-[220px] min-h-[120px]">
+                                  <Upload size={22} className="text-amber-700 mb-2" />
+                                  <span className="text-sm font-medium text-slate-900">Add requested files</span>
+                                  <span className="text-xs text-slate-500 mt-1">You can select files more than once. Maximum 10 files per submission.</span>
+                                  <input
+                                    type="file"
+                                    multiple
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const incomingFiles = Array.from(e.target.files || []);
+                                      setSelectedFilesByApplication((prev) => ({
+                                        ...prev,
+                                        [application.id]: mergeSelectedFiles(prev[application.id] || [], incomingFiles).slice(0, 10)
+                                      }));
+                                      e.currentTarget.value = "";
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                            </div>
+
+                            {(selectedFilesByApplication[application.id] || []).length > 0 && (
+                              <div className="mt-4 rounded-2xl border border-amber-200 bg-white p-4">
+                                <p className="text-sm font-semibold text-slate-900 mb-3">
+                                  Ready to submit ({(selectedFilesByApplication[application.id] || []).length})
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {(selectedFilesByApplication[application.id] || []).map((file) => (
+                                    <span key={`${file.name}-${file.size}-${file.lastModified}`} className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-medium text-amber-900">
+                                      {file.name}
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedFilesByApplication((prev) => ({
+                                          ...prev,
+                                          [application.id]: (prev[application.id] || []).filter((item) => `${item.name}-${item.size}-${item.lastModified}` !== `${file.name}-${file.size}-${file.lastModified}`)
+                                        }))}
+                                        className="text-amber-700 hover:text-red-600"
+                                      >
+                                        ×
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="mt-4 flex flex-wrap gap-3">
+                              <button
+                                type="button"
+                                onClick={() => handleSubmitRequestedDocuments(application.id)}
+                                disabled={submittingDocumentsForId === application.id}
+                                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-amber-600 text-white font-medium hover:bg-amber-700 disabled:opacity-60"
+                              >
+                                <Upload size={16} /> {submittingDocumentsForId === application.id ? "Submitting..." : "Submit Requested Documents"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedFilesByApplication((prev) => ({ ...prev, [application.id]: [] }));
+                                  setDocumentResponseDrafts((prev) => ({ ...prev, [application.id]: "" }));
+                                }}
+                                className="px-5 py-3 rounded-2xl border border-amber-300 text-amber-900 hover:bg-white"
+                              >
+                                Clear Selection
+                              </button>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
                           <div className="flex items-center gap-2 mb-4">
