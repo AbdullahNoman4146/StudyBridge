@@ -30,6 +30,7 @@ CREATE TABLE users (
   status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_users_role_country (role, country_id),
   CONSTRAINT fk_users_country
     FOREIGN KEY (country_id) REFERENCES countries(id) ON DELETE SET NULL
 );
