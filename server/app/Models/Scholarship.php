@@ -28,6 +28,11 @@ class Scholarship extends Model
     protected $casts = [
         'deadline' => 'date',
         'required_documents' => 'array',
+        'is_interested' => 'boolean',
+    ];
+
+    protected $appends = [
+        'is_interested',
     ];
 
     public function agent(): BelongsTo
@@ -43,5 +48,23 @@ class Scholarship extends Model
     public function applications(): HasMany
     {
         return $this->hasMany(ScholarshipApplication::class, 'scholarship_id');
+    }
+
+    public function interests(): HasMany
+    {
+        return $this->hasMany(ScholarshipInterest::class, 'scholarship_id');
+    }
+
+    public function getIsInterestedAttribute(): bool
+    {
+        if (array_key_exists('is_interested', $this->attributes)) {
+            return (bool) $this->attributes['is_interested'];
+        }
+
+        if (array_key_exists('is_interested', $this->relations)) {
+            return (bool) $this->relations['is_interested'];
+        }
+
+        return false;
     }
 }
