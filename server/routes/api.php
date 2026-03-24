@@ -29,6 +29,9 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/agent/applications/{id}', [ScholarshipApplicationController::class, 'updateStatus']);
 
     Route::get('/student/scholarships', [ScholarshipController::class, 'studentIndex']);
+    Route::get('/student/interested-scholarships', [ScholarshipController::class, 'interestedIndex']);
+    Route::post('/student/scholarships/{id}/interest', [ScholarshipController::class, 'markInterested']);
+    Route::delete('/student/scholarships/{id}/interest', [ScholarshipController::class, 'unmarkInterested']);
     Route::post('/student/scholarships/{id}/apply', [ScholarshipApplicationController::class, 'apply']);
     Route::get('/student/applications', [ScholarshipApplicationController::class, 'studentIndex']);
     Route::post('/student/applications/{id}/documents', [ScholarshipApplicationController::class, 'submitRequestedDocuments']);

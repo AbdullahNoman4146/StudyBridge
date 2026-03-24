@@ -43,6 +43,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Scholarship::class, 'agent_id');
     }
 
+    public function scholarshipInterests(): HasMany
+    {
+        return $this->hasMany(ScholarshipInterest::class, 'student_id');
+    }
+
     public function studentApplications(): HasMany
     {
         return $this->hasMany(ScholarshipApplication::class, 'student_id');

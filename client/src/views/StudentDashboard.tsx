@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -15,24 +15,36 @@ import {
   MessageSquare,
   Sparkles,
   FileCheck2,
-  MessageCircleMore
+  MessageCircleMore,
+  Heart,
+  RotateCcw
 } from "lucide-react";
 import { getCountries, getCurrentUser, logout } from "../api/auth";
 import {
   applyToScholarship,
   downloadApplicationDocument,
+  getInterestedScholarships,
   getStudentApplications,
   getStudentScholarships,
+  markScholarshipInterested,
   sendApplicationMessage,
   submitRequestedDocuments,
+  unmarkScholarshipInterested,
   type CountryOption,
   type Scholarship,
   type ScholarshipApplication,
-  type ApplicationMessageItem
+  type ApplicationMessageItem,
+  type StudentScholarshipFilters
 } from "../api/scholarships";
 import { clearAuthSession } from "../helpers/authStorage";
 
-type StudentTab = "browse" | "applications";
+type StudentTab = "browse" | "applications" | "interested";
+
+type DashboardUser = {
+  id: number;
+  name: string;
+  email: string;
+};
 
 function formatDate(date?: string | null) {
   if (!date) return "N/A";
@@ -101,6 +113,10 @@ function mergeSelectedFiles(currentFiles: File[], incomingFiles: File[]) {
   return Array.from(fileMap.values());
 }
 
+function uniqueNonEmptyValues(items: Array<string | null | undefined>) {
+  return Array.from(new Set(items.map((item) => (item || "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+}
+
 function ChatMessageBubble({ item, currentUserId }: { item: ApplicationMessageItem; currentUserId: number }) {
   const isMine = item.sender_id === currentUserId;
 
@@ -119,13 +135,18 @@ function ChatMessageBubble({ item, currentUserId }: { item: ApplicationMessageIt
 }
 
 export default function StudentDashboard() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<DashboardUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<StudentTab>("browse");
   const [countries, setCountries] = useState<CountryOption[]>([]);
+  const [allScholarships, setAllScholarships] = useState<Scholarship[]>([]);
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
+  const [interestedScholarships, setInterestedScholarships] = useState<Scholarship[]>([]);
   const [applications, setApplications] = useState<ScholarshipApplication[]>([]);
   const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedDegreeLevel, setSelectedDegreeLevel] = useState("");
+  const [selectedFundingType, setSelectedFundingType] = useState("");
+  const [selectedIntake, setSelectedIntake] = useState("");
   const [search, setSearch] = useState("");
   const [expandedScholarshipId, setExpandedScholarshipId] = useState<number | null>(null);
   const [expandedApplicationId, setExpandedApplicationId] = useState<number | null>(null);
@@ -141,21 +162,33 @@ export default function StudentDashboard() {
   const [isApplying, setIsApplying] = useState(false);
   const [sendingMessageForId, setSendingMessageForId] = useState<number | null>(null);
   const [submittingDocumentsForId, setSubmittingDocumentsForId] = useState<number | null>(null);
+  const [interestActionId, setInterestActionId] = useState<number | null>(null);
   const navigate = useNavigate();
+
+  const currentFilters = (): StudentScholarshipFilters => ({
+    countryId: selectedCountry || undefined,
+    degreeLevel: selectedDegreeLevel || undefined,
+    fundingType: selectedFundingType || undefined,
+    intake: selectedIntake || undefined,
+    search: search || undefined
+  });
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [currentUser, countryOptions, scholarshipList, applicationList] = await Promise.all([
+        const [currentUser, countryOptions, allScholarshipList, interestedList, applicationList] = await Promise.all([
           getCurrentUser(),
           getCountries() as Promise<CountryOption[]>,
           getStudentScholarships(),
+          getInterestedScholarships(),
           getStudentApplications()
         ]);
 
         setUser(currentUser);
         setCountries(countryOptions);
-        setScholarships(scholarshipList);
+        setAllScholarships(allScholarshipList);
+        setScholarships(allScholarshipList);
+        setInterestedScholarships(interestedList);
         setApplications(applicationList);
       } catch (error) {
         clearAuthSession();
@@ -176,12 +209,38 @@ export default function StudentDashboard() {
   const stats = useMemo(() => ({
     scholarships: scholarships.length,
     submittedApplications: applications.length,
-    activeReviews: applications.filter((application) => ["submitted", "under_review", "needs_documents"].includes(application.status)).length
-  }), [applications, scholarships]);
+    activeReviews: applications.filter((application) => ["submitted", "under_review", "needs_documents"].includes(application.status)).length,
+    interested: interestedScholarships.length
+  }), [applications, interestedScholarships.length, scholarships.length]);
 
-  const refreshScholarships = async (country = selectedCountry, searchTerm = search) => {
-    const scholarshipList = await getStudentScholarships(country, searchTerm);
+  const degreeLevelOptions = useMemo(
+    () => uniqueNonEmptyValues(allScholarships.map((item) => item.degree_level)),
+    [allScholarships]
+  );
+
+  const fundingTypeOptions = useMemo(
+    () => uniqueNonEmptyValues(allScholarships.map((item) => item.funding_type)),
+    [allScholarships]
+  );
+
+  const intakeOptions = useMemo(
+    () => uniqueNonEmptyValues(allScholarships.map((item) => item.intake)),
+    [allScholarships]
+  );
+
+  const refreshAllScholarships = async () => {
+    const scholarshipList = await getStudentScholarships();
+    setAllScholarships(scholarshipList);
+  };
+
+  const refreshScholarships = async (filters: StudentScholarshipFilters = currentFilters()) => {
+    const scholarshipList = await getStudentScholarships(filters);
     setScholarships(scholarshipList);
+  };
+
+  const refreshInterestedScholarships = async (filters: StudentScholarshipFilters = currentFilters()) => {
+    const scholarshipList = await getInterestedScholarships(filters);
+    setInterestedScholarships(scholarshipList);
   };
 
   const refreshApplications = async () => {
@@ -200,15 +259,76 @@ export default function StudentDashboard() {
     }
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
+  const handleSearch = async (e: FormEvent) => {
     e.preventDefault();
     setPageError("");
 
     try {
-      await refreshScholarships(selectedCountry, search);
+      const filters = currentFilters();
+      await Promise.all([
+        refreshScholarships(filters),
+        refreshInterestedScholarships(filters)
+      ]);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load scholarships";
       setPageError(message);
+    }
+  };
+
+  const handleResetFilters = async () => {
+    setSelectedCountry("");
+    setSelectedDegreeLevel("");
+    setSelectedFundingType("");
+    setSelectedIntake("");
+    setSearch("");
+    setPageError("");
+
+    try {
+      await Promise.all([
+        refreshScholarships({}),
+        refreshInterestedScholarships({})
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to reset filters";
+      setPageError(message);
+    }
+  };
+
+  const openApplicationDetails = (scholarshipId: number) => {
+    setActiveTab("applications");
+    const matchingApplication = applications.find((item) => item.scholarship_id === scholarshipId);
+    setExpandedApplicationId(matchingApplication?.id || null);
+  };
+
+  const handleToggleInterest = async (scholarship: Scholarship) => {
+    if (appliedScholarshipIds.has(scholarship.id)) {
+      setPageError("This scholarship is already in your My Applications list.");
+      return;
+    }
+
+    setPageError("");
+    setApplySuccess("");
+    setApplyError("");
+    setMessageSuccess("");
+    setInterestActionId(scholarship.id);
+
+    try {
+      const response = scholarship.is_interested
+        ? await unmarkScholarshipInterested(scholarship.id)
+        : await markScholarshipInterested(scholarship.id);
+
+      setMessageSuccess(response.message);
+      const filters = currentFilters();
+      await Promise.all([
+        refreshScholarships(filters),
+        refreshInterestedScholarships(filters),
+        refreshAllScholarships()
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update interested scholarships";
+      setPageError(message);
+    } finally {
+      setInterestActionId(null);
     }
   };
 
@@ -216,6 +336,7 @@ export default function StudentDashboard() {
     setApplyError("");
     setApplySuccess("");
     setMessageSuccess("");
+    setPageError("");
 
     if (selectedFiles.length === 0) {
       setApplyError("Please upload at least one document before applying.");
@@ -230,8 +351,13 @@ export default function StudentDashboard() {
       setApplicationMessage("");
       setSelectedFiles([]);
       setExpandedScholarshipId(null);
-      await refreshApplications();
-      await refreshScholarships();
+      const filters = currentFilters();
+      await Promise.all([
+        refreshApplications(),
+        refreshScholarships(filters),
+        refreshInterestedScholarships(filters),
+        refreshAllScholarships()
+      ]);
       setActiveTab("applications");
       setExpandedApplicationId(response.application.id);
     } catch (err) {
@@ -301,6 +427,234 @@ export default function StudentDashboard() {
     }
   };
 
+  const renderScholarshipList = (items: Scholarship[], emptyMessage: string) => {
+    if (items.length === 0) {
+      return (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 text-center text-slate-500">
+          {emptyMessage}
+        </div>
+      );
+    }
+
+    return items.map((scholarship) => {
+      const alreadyApplied = appliedScholarshipIds.has(scholarship.id);
+      const isExpanded = expandedScholarshipId === scholarship.id;
+      const isInterestLoading = interestActionId === scholarship.id;
+
+      return (
+        <article key={scholarship.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <span className="rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-xs font-semibold">
+                  {scholarship.degree_level}
+                </span>
+                <span className="rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-semibold">
+                  {scholarship.funding_type}
+                </span>
+                <span className="rounded-full bg-violet-50 text-violet-700 px-3 py-1 text-xs font-semibold">
+                  Intake {scholarship.intake || "Not specified"}
+                </span>
+                <span className="rounded-full bg-amber-50 text-amber-700 px-3 py-1 text-xs font-semibold">
+                  Deadline {formatDate(scholarship.deadline)}
+                </span>
+                {scholarship.is_interested && !alreadyApplied && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 text-rose-700 px-3 py-1 text-xs font-semibold">
+                    <Heart size={12} /> Interested
+                  </span>
+                )}
+              </div>
+
+              <h2 className="text-2xl font-bold text-slate-900">{scholarship.title}</h2>
+              <p className="text-slate-600 mt-1">{scholarship.university_name} · {scholarship.country?.name}</p>
+              <p className="text-slate-600 mt-4 leading-7">{scholarship.description}</p>
+            </div>
+
+            <div className="min-w-[220px] lg:text-right">
+              <p className="text-sm text-slate-500">Coverage</p>
+              <p className="text-lg font-bold text-slate-900">{scholarship.amount || "Not specified"}</p>
+              <p className="text-sm text-slate-500 mt-2">Intake</p>
+              <p className="font-medium text-slate-900">{scholarship.intake || "Not specified"}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-6">
+            <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+              <p className="text-sm font-semibold text-slate-900 mb-2">Eligibility Requirements</p>
+              <p className="text-sm leading-7 text-slate-600">{scholarship.eligibility || "No specific eligibility notes were added by the agent."}</p>
+            </div>
+
+            <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+              <p className="text-sm font-semibold text-slate-900 mb-2">Required Documents</p>
+              {(scholarship.required_documents || []).length === 0 ? (
+                <p className="text-sm text-slate-500">No required document list provided yet.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {(scholarship.required_documents || []).map((item) => (
+                    <span key={item} className="rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {scholarship.application_instructions && (
+            <div className="mt-5 rounded-2xl bg-blue-50 border border-blue-100 p-4">
+              <p className="text-sm font-semibold text-blue-900 mb-1">Application Instructions</p>
+              <p className="text-sm leading-7 text-blue-800">{scholarship.application_instructions}</p>
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <p className="text-sm text-slate-500">Handled by {scholarship.agent?.name || "assigned agent"}</p>
+              <p className="text-xs text-slate-400 mt-1">Mark scholarships as interested to save them for later, or apply immediately.</p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              {!alreadyApplied && (
+                <button
+                  type="button"
+                  onClick={() => handleToggleInterest(scholarship)}
+                  disabled={isInterestLoading}
+                  className={`inline-flex items-center gap-2 px-5 py-3 rounded-2xl font-medium border transition ${scholarship.is_interested ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"} disabled:opacity-60`}
+                >
+                  <Heart size={16} />
+                  {isInterestLoading ? "Updating..." : scholarship.is_interested ? "Remove Interested" : "Mark Interested"}
+                </button>
+              )}
+
+              {alreadyApplied ? (
+                <button
+                  type="button"
+                  onClick={() => openApplicationDetails(scholarship.id)}
+                  className="px-5 py-3 rounded-2xl bg-slate-900 text-white font-medium hover:bg-slate-800"
+                >
+                  Open My Application
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApplyError("");
+                    setApplySuccess("");
+                    setPageError("");
+                    setExpandedScholarshipId(isExpanded ? null : scholarship.id);
+                    if (!isExpanded) {
+                      setApplicationMessage("");
+                      setSelectedFiles([]);
+                    }
+                  }}
+                  className="px-5 py-3 rounded-2xl bg-blue-600 text-white font-medium hover:bg-blue-700"
+                >
+                  {isExpanded ? "Close Application Form" : "Apply Now"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {isExpanded && !alreadyApplied && (
+            <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles size={18} className="text-blue-600" />
+                <h3 className="text-lg font-bold text-slate-900">Submit your application</h3>
+              </div>
+              <p className="text-sm text-slate-500 mb-4">Upload the required documents and optionally write a message for the agent. After applying, the scholarship will move to My Applications automatically.</p>
+
+              {(scholarship.required_documents || []).length > 0 && (
+                <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                  <p className="text-sm font-semibold text-blue-900 mb-2">Recommended document checklist</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(scholarship.required_documents || []).map((item) => (
+                      <span key={item} className="rounded-full bg-white border border-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">Message to agent</label>
+                  <textarea
+                    value={applicationMessage}
+                    onChange={(e) => setApplicationMessage(e.target.value)}
+                    placeholder="Introduce yourself, mention your goals, or explain any important notes about the uploaded documents"
+                    className="w-full min-h-[130px] px-4 py-3 rounded-2xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-900 mb-2">Upload documents</label>
+                  <label className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-4 cursor-pointer flex flex-col items-center justify-center text-center min-w-[220px] min-h-[130px]">
+                    <Upload size={22} className="text-blue-600 mb-2" />
+                    <span className="text-sm font-medium text-slate-900">Choose one or more files</span>
+                    <span className="text-xs text-slate-500 mt-1">PDF, JPG, PNG, DOC, DOCX · up to 10 files · you can add more in multiple selections</span>
+                    <input
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        const incomingFiles = Array.from(e.target.files || []);
+                        setSelectedFiles((prev) => mergeSelectedFiles(prev, incomingFiles).slice(0, 10));
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {selectedFiles.length > 0 && (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                  <p className="text-sm font-semibold text-slate-900 mb-3">Selected documents ({selectedFiles.length})</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedFiles.map((file) => (
+                      <span key={`${file.name}-${file.size}-${file.lastModified}`} className="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700">
+                        {file.name}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFiles((prev) => prev.filter((item) => `${item.name}-${item.size}-${item.lastModified}` !== `${file.name}-${file.size}-${file.lastModified}`))}
+                          className="text-slate-500 hover:text-red-600"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleApply(scholarship.id)}
+                  disabled={isApplying}
+                  className="px-5 py-3 rounded-2xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {isApplying ? "Submitting..." : "Submit Application"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExpandedScholarshipId(null);
+                    setApplicationMessage("");
+                    setSelectedFiles([]);
+                  }}
+                  className="px-5 py-3 rounded-2xl border border-slate-300 text-slate-700 hover:bg-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </article>
+      );
+    });
+  };
+
   if (loading) {
     return <div className="p-8 text-center">Loading student dashboard...</div>;
   }
@@ -311,7 +665,7 @@ export default function StudentDashboard() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900">Student Dashboard</h1>
-            <p className="text-slate-600 mt-1">Explore scholarships, upload documents, and chat with your assigned agent inside each application.</p>
+            <p className="text-slate-600 mt-1">Explore scholarships, save interesting options, upload documents, and chat with your assigned agent inside each application.</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
@@ -328,14 +682,23 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
             <div className="flex items-center gap-3 mb-4">
               <BookOpen className="text-blue-600" size={22} />
               <h3 className="text-lg font-bold text-slate-900">Available Scholarships</h3>
             </div>
             <p className="text-3xl font-bold text-slate-900">{stats.scholarships}</p>
-            <p className="text-sm text-slate-500 mt-2">Listings that match your current search and country filter.</p>
+            <p className="text-sm text-slate-500 mt-2">Listings that match your current filters.</p>
+          </div>
+
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Heart className="text-rose-600" size={22} />
+              <h3 className="text-lg font-bold text-slate-900">Interested</h3>
+            </div>
+            <p className="text-3xl font-bold text-slate-900">{stats.interested}</p>
+            <p className="text-sm text-slate-500 mt-2">Scholarships you saved for later review.</p>
           </div>
 
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
@@ -370,6 +733,12 @@ export default function StudentDashboard() {
           >
             My Applications
           </button>
+          <button
+            onClick={() => setActiveTab("interested")}
+            className={`inline-flex items-center gap-2 px-5 py-3 rounded-2xl font-medium transition ${activeTab === "interested" ? "bg-blue-600 text-white" : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"}`}
+          >
+            <Heart size={16} /> Interested
+          </button>
         </div>
 
         {pageError && (
@@ -388,16 +757,16 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {activeTab === "browse" && (
+        {(activeTab === "browse" || activeTab === "interested") && (
           <>
             <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 mb-6">
-              <form onSubmit={handleSearch} className="grid grid-cols-1 lg:grid-cols-[1fr_240px_auto] gap-4">
-                <div className="relative">
+              <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+                <div className="relative md:col-span-2">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by scholarship title, university, level, or funding"
+                    placeholder="Search by scholarship title, university, level, funding, or intake"
                     className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -418,11 +787,57 @@ export default function StudentDashboard() {
                   </select>
                 </div>
 
+                <select
+                  value={selectedDegreeLevel}
+                  onChange={(e) => setSelectedDegreeLevel(e.target.value)}
+                  className="w-full appearance-none px-4 py-3 rounded-2xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All degree levels</option>
+                  {degreeLevelOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedFundingType}
+                  onChange={(e) => setSelectedFundingType(e.target.value)}
+                  className="w-full appearance-none px-4 py-3 rounded-2xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All funding types</option>
+                  {fundingTypeOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedIntake}
+                  onChange={(e) => setSelectedIntake(e.target.value)}
+                  className="w-full appearance-none px-4 py-3 rounded-2xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All intakes</option>
+                  {intakeOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+
                 <button
                   type="submit"
-                  className="px-5 py-3 rounded-2xl bg-blue-600 text-white font-medium hover:bg-blue-700"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 text-white font-medium hover:bg-blue-700"
                 >
-                  Apply Filter
+                  <Search size={16} /> Apply Filters
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl border border-slate-300 bg-white text-slate-700 font-medium hover:bg-slate-50"
+                >
+                  <RotateCcw size={16} /> Reset
                 </button>
               </form>
             </section>
@@ -434,205 +849,9 @@ export default function StudentDashboard() {
             )}
 
             <section className="space-y-5">
-              {scholarships.length === 0 ? (
-                <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 text-center text-slate-500">
-                  No scholarships match your current search. Try a different keyword or country filter.
-                </div>
-              ) : (
-                scholarships.map((scholarship) => {
-                  const alreadyApplied = appliedScholarshipIds.has(scholarship.id);
-                  const isExpanded = expandedScholarshipId === scholarship.id;
-
-                  return (
-                    <article key={scholarship.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            <span className="rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-xs font-semibold">
-                              {scholarship.degree_level}
-                            </span>
-                            <span className="rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-semibold">
-                              {scholarship.funding_type}
-                            </span>
-                            <span className="rounded-full bg-amber-50 text-amber-700 px-3 py-1 text-xs font-semibold">
-                              Deadline {formatDate(scholarship.deadline)}
-                            </span>
-                          </div>
-
-                          <h2 className="text-2xl font-bold text-slate-900">{scholarship.title}</h2>
-                          <p className="text-slate-600 mt-1">{scholarship.university_name} · {scholarship.country?.name}</p>
-                          <p className="text-slate-600 mt-4 leading-7">{scholarship.description}</p>
-                        </div>
-
-                        <div className="min-w-[220px] lg:text-right">
-                          <p className="text-sm text-slate-500">Coverage</p>
-                          <p className="text-lg font-bold text-slate-900">{scholarship.amount || "Not specified"}</p>
-                          <p className="text-sm text-slate-500 mt-2">Intake</p>
-                          <p className="font-medium text-slate-900">{scholarship.intake || "Not specified"}</p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-6">
-                        <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
-                          <p className="text-sm font-semibold text-slate-900 mb-2">Eligibility Requirements</p>
-                          <p className="text-sm leading-7 text-slate-600">{scholarship.eligibility || "No specific eligibility notes were added by the agent."}</p>
-                        </div>
-
-                        <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
-                          <p className="text-sm font-semibold text-slate-900 mb-2">Required Documents</p>
-                          {(scholarship.required_documents || []).length === 0 ? (
-                            <p className="text-sm text-slate-500">No required document list provided yet.</p>
-                          ) : (
-                            <div className="flex flex-wrap gap-2">
-                              {(scholarship.required_documents || []).map((item) => (
-                                <span key={item} className="rounded-full bg-white border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700">
-                                  {item}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {scholarship.application_instructions && (
-                        <div className="mt-5 rounded-2xl bg-blue-50 border border-blue-100 p-4">
-                          <p className="text-sm font-semibold text-blue-900 mb-1">Application Instructions</p>
-                          <p className="text-sm leading-7 text-blue-800">{scholarship.application_instructions}</p>
-                        </div>
-                      )}
-
-                      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="text-sm text-slate-500">Handled by {scholarship.agent?.name || "assigned agent"}</p>
-                          <p className="text-xs text-slate-400 mt-1">Students can continue chatting with the agent after submitting.</p>
-                        </div>
-
-                        {alreadyApplied ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveTab("applications");
-                              const matchingApplication = applications.find((item) => item.scholarship_id === scholarship.id);
-                              setExpandedApplicationId(matchingApplication?.id || null);
-                            }}
-                            className="px-5 py-3 rounded-2xl bg-slate-900 text-white font-medium hover:bg-slate-800"
-                          >
-                            Open My Application
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setApplyError("");
-                              setApplySuccess("");
-                              setExpandedScholarshipId(isExpanded ? null : scholarship.id);
-                            }}
-                            className="px-5 py-3 rounded-2xl bg-blue-600 text-white font-medium hover:bg-blue-700"
-                          >
-                            {isExpanded ? "Close Application Form" : "Apply Now"}
-                          </button>
-                        )}
-                      </div>
-
-                      {isExpanded && !alreadyApplied && (
-                        <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                          <div className="flex items-center gap-2 mb-3">
-                            <Sparkles size={18} className="text-blue-600" />
-                            <h3 className="text-lg font-bold text-slate-900">Submit your application</h3>
-                          </div>
-                          <p className="text-sm text-slate-500 mb-4">Upload the required documents and optionally write a message for the agent. After applying, you can continue chatting from the My Applications tab.</p>
-
-                          {(scholarship.required_documents || []).length > 0 && (
-                            <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                              <p className="text-sm font-semibold text-blue-900 mb-2">Recommended document checklist</p>
-                              <div className="flex flex-wrap gap-2">
-                                {(scholarship.required_documents || []).map((item) => (
-                                  <span key={item} className="rounded-full bg-white border border-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-                                    {item}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4">
-                            <div>
-                              <label className="block text-sm font-semibold text-slate-900 mb-2">Message to agent</label>
-                              <textarea
-                                value={applicationMessage}
-                                onChange={(e) => setApplicationMessage(e.target.value)}
-                                placeholder="Introduce yourself, mention your goals, or explain any important notes about the uploaded documents"
-                                className="w-full min-h-[130px] px-4 py-3 rounded-2xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-semibold text-slate-900 mb-2">Upload documents</label>
-                              <label className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-4 cursor-pointer flex flex-col items-center justify-center text-center min-w-[220px] min-h-[130px]">
-                                <Upload size={22} className="text-blue-600 mb-2" />
-                                <span className="text-sm font-medium text-slate-900">Choose one or more files</span>
-                                <span className="text-xs text-slate-500 mt-1">PDF, JPG, PNG, DOC, DOCX · up to 10 files · you can add more in multiple selections</span>
-                                <input
-                                  type="file"
-                                  multiple
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    const incomingFiles = Array.from(e.target.files || []);
-                                    setSelectedFiles((prev) => mergeSelectedFiles(prev, incomingFiles).slice(0, 10));
-                                    e.currentTarget.value = "";
-                                  }}
-                                />
-                              </label>
-                            </div>
-                          </div>
-
-                          {selectedFiles.length > 0 && (
-                            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                              <p className="text-sm font-semibold text-slate-900 mb-3">Selected documents ({selectedFiles.length})</p>
-                              <div className="flex flex-wrap gap-2">
-                                {selectedFiles.map((file) => (
-                                  <span key={`${file.name}-${file.size}-${file.lastModified}`} className="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700">
-                                    {file.name}
-                                    <button
-                                      type="button"
-                                      onClick={() => setSelectedFiles((prev) => prev.filter((item) => `${item.name}-${item.size}-${item.lastModified}` !== `${file.name}-${file.size}-${file.lastModified}`))}
-                                      className="text-slate-500 hover:text-red-600"
-                                    >
-                                      ×
-                                    </button>
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="mt-5 flex flex-wrap gap-3">
-                            <button
-                              type="button"
-                              onClick={() => handleApply(scholarship.id)}
-                              disabled={isApplying}
-                              className="px-5 py-3 rounded-2xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-60"
-                            >
-                              {isApplying ? "Submitting..." : "Submit Application"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setExpandedScholarshipId(null);
-                                setApplicationMessage("");
-                                setSelectedFiles([]);
-                              }}
-                              className="px-5 py-3 rounded-2xl border border-slate-300 text-slate-700 hover:bg-white"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </article>
-                  );
-                })
-              )}
+              {activeTab === "browse"
+                ? renderScholarshipList(scholarships, "No scholarships match your current filters. Try a different keyword, degree level, funding type, intake, or country filter.")
+                : renderScholarshipList(interestedScholarships, "You have not marked any scholarships as interested yet. Save scholarships from the Browse Scholarships tab to see them here.")}
             </section>
           </>
         )}
@@ -830,7 +1049,7 @@ export default function StudentDashboard() {
                               </div>
                             ) : (
                               application.messages.map((item) => (
-                                <ChatMessageBubble key={item.id} item={item} currentUserId={user.id} />
+                                <ChatMessageBubble key={item.id} item={item} currentUserId={user?.id || 0} />
                               ))
                             )}
                           </div>

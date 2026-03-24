@@ -124,3 +124,17 @@ CREATE TABLE application_messages (
   CONSTRAINT fk_application_messages_sender
     FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS scholarship_interests (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  scholarship_id INT NOT NULL,
+  student_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_scholarship_interest (scholarship_id, student_id),
+  INDEX idx_scholarship_interests_student (student_id),
+  INDEX idx_scholarship_interests_scholarship (scholarship_id),
+  CONSTRAINT fk_scholarship_interests_scholarship
+    FOREIGN KEY (scholarship_id) REFERENCES scholarships(id) ON DELETE CASCADE,
+  CONSTRAINT fk_scholarship_interests_student
+    FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+);

@@ -6,6 +6,7 @@ use App\Models\ApplicationDocument;
 use App\Models\ApplicationMessage;
 use App\Models\Scholarship;
 use App\Models\ScholarshipApplication;
+use App\Models\ScholarshipInterest;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -209,6 +210,10 @@ class ScholarshipApplicationController extends Controller
                 'submitted_at' => now(),
             ]);
 
+            ScholarshipInterest::where('scholarship_id', $scholarship->id)
+                ->where('student_id', $student->id)
+                ->delete();
+
             $this->storeApplicationDocuments($application->id, $files);
 
             if ($request->filled('message')) {
@@ -358,6 +363,7 @@ class ScholarshipApplicationController extends Controller
         ]);
 
         $user = auth('api')->user();
+
         $application = $this->ensureApplicationAccess((int) $applicationId);
 
         $message = ApplicationMessage::create([

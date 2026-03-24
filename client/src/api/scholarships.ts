@@ -20,6 +20,7 @@ export interface Scholarship {
     required_documents: string[] | null;
     status: "active" | "inactive";
     applications_count?: number;
+    is_interested?: boolean;
     country?: CountryOption;
     agent?: {
         id: number;
@@ -89,6 +90,14 @@ export interface ScholarshipPayload {
     status: "active" | "inactive";
 }
 
+export interface StudentScholarshipFilters {
+    countryId?: string;
+    degreeLevel?: string;
+    fundingType?: string;
+    intake?: string;
+    search?: string;
+}
+
 function getAuthHeaders(extra: HeadersInit = {}) {
     const token = localStorage.getItem("token");
 
@@ -96,6 +105,33 @@ function getAuthHeaders(extra: HeadersInit = {}) {
         Authorization: `Bearer ${token}`,
         ...extra
     };
+}
+
+function buildScholarshipQuery(filters: StudentScholarshipFilters = {}) {
+    const params = new URLSearchParams();
+
+    if (filters.countryId) {
+        params.set("country_id", filters.countryId);
+    }
+
+    if (filters.degreeLevel && filters.degreeLevel.trim()) {
+        params.set("degree_level", filters.degreeLevel.trim());
+    }
+
+    if (filters.fundingType && filters.fundingType.trim()) {
+        params.set("funding_type", filters.fundingType.trim());
+    }
+
+    if (filters.intake && filters.intake.trim()) {
+        params.set("intake", filters.intake.trim());
+    }
+
+    if (filters.search && filters.search.trim()) {
+        params.set("search", filters.search.trim());
+    }
+
+    const query = params.toString();
+    return query ? `?${query}` : "";
 }
 
 export async function getAgentScholarships(): Promise<Scholarship[]> {
@@ -130,23 +166,38 @@ export async function updateScholarship(id: number, payload: ScholarshipPayload)
     return handleResponse(res) as Promise<{ message: string; scholarship: Scholarship }>;
 }
 
-export async function getStudentScholarships(countryId?: string, search?: string): Promise<Scholarship[]> {
-    const params = new URLSearchParams();
-
-    if (countryId) {
-        params.set("country_id", countryId);
-    }
-
-    if (search && search.trim()) {
-        params.set("search", search.trim());
-    }
-
-    const query = params.toString();
-    const res = await fetch(`${API}/student/scholarships${query ? `?${query}` : ""}`, {
+export async function getStudentScholarships(filters: StudentScholarshipFilters = {}): Promise<Scholarship[]> {
+    const res = await fetch(`${API}/student/scholarships${buildScholarshipQuery(filters)}`, {
         headers: getAuthHeaders()
     });
 
     return handleResponse(res) as Promise<Scholarship[]>;
+}
+
+export async function getInterestedScholarships(filters: StudentScholarshipFilters = {}): Promise<Scholarship[]> {
+    const res = await fetch(`${API}/student/interested-scholarships${buildScholarshipQuery(filters)}`, {
+        headers: getAuthHeaders()
+    });
+
+    return handleResponse(res) as Promise<Scholarship[]>;
+}
+
+export async function markScholarshipInterested(scholarshipId: number) {
+    const res = await fetch(`${API}/student/scholarships/${scholarshipId}/interest`, {
+        method: "POST",
+        headers: getAuthHeaders()
+    });
+
+    return handleResponse(res) as Promise<{ message: string }>;
+}
+
+export async function unmarkScholarshipInterested(scholarshipId: number) {
+    const res = await fetch(`${API}/student/scholarships/${scholarshipId}/interest`, {
+        method: "DELETE",
+        headers: getAuthHeaders()
+    });
+
+    return handleResponse(res) as Promise<{ message: string }>;
 }
 
 export async function applyToScholarship(scholarshipId: number, message: string, files: File[]) {

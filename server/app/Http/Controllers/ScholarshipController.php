@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Scholarship;
+use App\Models\ScholarshipInterest;
 use Illuminate\Http\Request;
 
 class ScholarshipController extends Controller
@@ -50,6 +51,59 @@ class ScholarshipController extends Controller
             'required_documents.*' => 'nullable|string|max:120',
             'status' => 'nullable|in:active,inactive',
         ]);
+    }
+
+    private function studentScholarshipBaseQuery(int $studentId)
+    {
+        return Scholarship::query()
+            ->with([
+                'country:id,name',
+                'agent:id,name,email'
+            ])
+            ->withCount([
+                'interests as is_interested' => function ($query) use ($studentId) {
+                    $query->where('student_id', $studentId);
+                }
+            ])
+            ->where('status', 'active');
+    }
+
+    private function applyStudentFilters($query, Request $request)
+    {
+        $countryId = trim((string) $request->query('country_id', ''));
+        $degreeLevel = trim((string) $request->query('degree_level', ''));
+        $fundingType = trim((string) $request->query('funding_type', ''));
+        $intake = trim((string) $request->query('intake', ''));
+        $search = trim((string) $request->query('search', ''));
+
+        if ($countryId !== '') {
+            $query->where('country_id', $countryId);
+        }
+
+        if ($degreeLevel !== '') {
+            $query->where('degree_level', $degreeLevel);
+        }
+
+        if ($fundingType !== '') {
+            $query->where('funding_type', $fundingType);
+        }
+
+        if ($intake !== '') {
+            $query->where('intake', $intake);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('university_name', 'like', '%' . $search . '%')
+                    ->orWhere('degree_level', 'like', '%' . $search . '%')
+                    ->orWhere('funding_type', 'like', '%' . $search . '%')
+                    ->orWhere('intake', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%');
+            });
+        }
+
+        return $query;
     }
 
     public function agentIndex()
@@ -131,35 +185,74 @@ class ScholarshipController extends Controller
     public function studentIndex(Request $request)
     {
         $student = $this->ensureStudent();
-        unset($student);
 
-        $countryId = $request->query('country_id');
-        $search = trim((string) $request->query('search', ''));
-
-        $query = Scholarship::with([
-                'country:id,name',
-                'agent:id,name,email'
-            ])
-            ->where('status', 'active')
+        $query = $this->studentScholarshipBaseQuery((int) $student->id)
             ->orderBy('deadline')
             ->orderByDesc('created_at');
 
-        if ($countryId) {
-            $query->where('country_id', $countryId);
-        }
-
-        if ($search !== '') {
-            $query->where(function ($builder) use ($search) {
-                $builder->where('title', 'like', '%' . $search . '%')
-                    ->orWhere('university_name', 'like', '%' . $search . '%')
-                    ->orWhere('degree_level', 'like', '%' . $search . '%')
-                    ->orWhere('funding_type', 'like', '%' . $search . '%')
-                    ->orWhere('description', 'like', '%' . $search . '%');
-            });
-        }
-
-        $scholarships = $query->get();
+        $scholarships = $this->applyStudentFilters($query, $request)->get();
 
         return response()->json($scholarships);
+    }
+
+    public function interestedIndex(Request $request)
+    {
+        $student = $this->ensureStudent();
+
+        $query = $this->studentScholarshipBaseQuery((int) $student->id)
+            ->whereHas('interests', function ($builder) use ($student) {
+                $builder->where('student_id', $student->id);
+            })
+            ->orderBy('deadline')
+            ->orderByDesc('created_at');
+
+        $scholarships = $this->applyStudentFilters($query, $request)->get();
+
+        return response()->json($scholarships);
+    }
+
+    public function markInterested($scholarshipId)
+    {
+        $student = $this->ensureStudent();
+
+        $scholarship = Scholarship::where('status', 'active')->find($scholarshipId);
+
+        if (!$scholarship) {
+            return response()->json([
+                'message' => 'Scholarship not found'
+            ], 404);
+        }
+
+        $alreadyApplied = $student->studentApplications()
+            ->where('scholarship_id', $scholarship->id)
+            ->exists();
+
+        if ($alreadyApplied) {
+            return response()->json([
+                'message' => 'This scholarship is already in your applications list.'
+            ], 422);
+        }
+
+        ScholarshipInterest::firstOrCreate([
+            'scholarship_id' => $scholarship->id,
+            'student_id' => $student->id,
+        ]);
+
+        return response()->json([
+            'message' => 'Scholarship added to your Interested list.'
+        ], 201);
+    }
+
+    public function unmarkInterested($scholarshipId)
+    {
+        $student = $this->ensureStudent();
+
+        ScholarshipInterest::where('scholarship_id', $scholarshipId)
+            ->where('student_id', $student->id)
+            ->delete();
+
+        return response()->json([
+            'message' => 'Scholarship removed from your Interested list.'
+        ]);
     }
 }
