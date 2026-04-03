@@ -27,6 +27,7 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/agent/scholarships/{id}', [ScholarshipController::class, 'update']);
     Route::get('/agent/applications', [ScholarshipApplicationController::class, 'agentIndex']);
     Route::put('/agent/applications/{id}', [ScholarshipApplicationController::class, 'updateStatus']);
+    Route::post('/agent/applications/{id}/deadline-reminder', [ScholarshipApplicationController::class, 'sendDeadlineReminder']);
 
     Route::get('/student/scholarships', [ScholarshipController::class, 'studentIndex']);
     Route::get('/student/interested-scholarships', [ScholarshipController::class, 'interestedIndex']);

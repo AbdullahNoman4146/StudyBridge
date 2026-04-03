@@ -138,3 +138,23 @@ CREATE TABLE IF NOT EXISTS scholarship_interests (
   CONSTRAINT fk_scholarship_interests_student
     FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+
+DROP TABLE IF EXISTS `email_reminder_logs`;
+
+CREATE TABLE `email_reminder_logs` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `reminder_type` VARCHAR(120) NOT NULL,
+  `student_id` BIGINT UNSIGNED NULL,
+  `agent_id` BIGINT UNSIGNED NULL,
+  `scholarship_id` BIGINT UNSIGNED NULL,
+  `application_id` BIGINT UNSIGNED NULL,
+  `reminder_for_date` DATE NULL,
+  `sent_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  INDEX `email_logs_type_date_idx` (`reminder_type`, `reminder_for_date`),
+  INDEX `email_logs_student_scholarship_idx` (`student_id`, `scholarship_id`),
+  INDEX `email_logs_application_agent_idx` (`application_id`, `agent_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
