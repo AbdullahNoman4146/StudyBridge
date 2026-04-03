@@ -26,6 +26,7 @@ import {
   downloadApplicationDocument,
   getAgentApplications,
   getAgentScholarships,
+  sendAgentDeadlineReminder,
   sendApplicationMessage,
   type Scholarship,
   type ScholarshipApplication,
@@ -154,6 +155,7 @@ export default function AgentDashboard() {
   const [applicationDrafts, setApplicationDrafts] = useState<Record<number, { status: ScholarshipApplication["status"]; agent_note: string }>>({});
   const [messageDrafts, setMessageDrafts] = useState<Record<number, string>>({});
   const [sendingMessageForId, setSendingMessageForId] = useState<number | null>(null);
+  const [sendingDeadlineReminderForId, setSendingDeadlineReminderForId] = useState<number | null>(null);
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -415,6 +417,24 @@ export default function AgentDashboard() {
       setPageError(message);
     } finally {
       setSendingMessageForId(null);
+    }
+  };
+
+  const handleSendDeadlineReminder = async (applicationId: number) => {
+    setSendingDeadlineReminderForId(applicationId);
+    setPageError("");
+    setMessageSuccess("");
+
+    try {
+      const response = await sendAgentDeadlineReminder(applicationId);
+      await refreshData();
+      setMessageSuccess(response.message);
+      setExpandedApplicationId(applicationId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to send deadline reminder";
+      setPageError(message);
+    } finally {
+      setSendingDeadlineReminderForId(null);
     }
   };
 
@@ -1020,7 +1040,7 @@ export default function AgentDashboard() {
                               )}
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_auto] gap-4 items-start">
+                            <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_auto_auto] gap-4 items-start">
                               <div>
                                 <label className="block text-sm font-semibold text-slate-900 mb-2">Application Status</label>
                                 <select
@@ -1053,6 +1073,15 @@ export default function AgentDashboard() {
                                 className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-60 mt-7"
                               >
                                 <Save size={16} /> {savingApplicationId === application.id ? "Saving..." : "Save"}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleSendDeadlineReminder(application.id)}
+                                disabled={sendingDeadlineReminderForId === application.id}
+                                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-amber-500 text-white font-medium hover:bg-amber-600 disabled:opacity-60 mt-7"
+                              >
+                                <Bell size={16} /> {sendingDeadlineReminderForId === application.id ? "Sending..." : "Send Deadline Reminder"}
                               </button>
                             </div>
 

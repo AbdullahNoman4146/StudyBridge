@@ -264,6 +264,16 @@ export async function updateAgentApplicationStatus(
     return handleResponse(res) as Promise<{ message: string; application: ScholarshipApplication }>;
 }
 
+
+export async function sendAgentDeadlineReminder(applicationId: number) {
+    const res = await fetch(`${API}/agent/applications/${applicationId}/deadline-reminder`, {
+        method: "POST",
+        headers: getAuthHeaders()
+    });
+
+    return handleResponse(res) as Promise<{ message: string; application: ScholarshipApplication }>;
+}
+
 export async function sendApplicationMessage(applicationId: number, message: string) {
     const res = await fetch(`${API}/applications/${applicationId}/messages`, {
         method: "POST",

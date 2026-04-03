@@ -7,6 +7,8 @@ use App\Models\ApplicationMessage;
 use App\Models\Scholarship;
 use App\Models\ScholarshipApplication;
 use App\Models\ScholarshipInterest;
+use App\Services\ScholarshipReminderService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -322,7 +324,7 @@ class ScholarshipApplicationController extends Controller
         return response()->json($applications);
     }
 
-    public function updateStatus(Request $request, $applicationId)
+    public function updateStatus(Request $request, $applicationId, ScholarshipReminderService $reminderService)
     {
         $agent = $this->ensureAgent();
 
@@ -337,7 +339,13 @@ class ScholarshipApplicationController extends Controller
             ], 422);
         }
 
-        $application = ScholarshipApplication::where('agent_id', $agent->id)->find($applicationId);
+        $application = ScholarshipApplication::with([
+                'student:id,name,email',
+                'agent:id,name,email',
+                'scholarship:id,title,university_name,deadline'
+            ])
+            ->where('agent_id', $agent->id)
+            ->find($applicationId);
 
         if (!$application) {
             return response()->json([
@@ -345,13 +353,80 @@ class ScholarshipApplicationController extends Controller
             ], 404);
         }
 
+        $previousStatus = $application->status;
+
         $application->update([
             'status' => $request->status,
             'agent_note' => $request->agent_note,
         ]);
 
+        $application->refresh();
+        $application->loadMissing([
+            'student:id,name,email',
+            'agent:id,name,email',
+            'scholarship:id,title,university_name,deadline'
+        ]);
+
+        $responseMessage = 'Application updated successfully';
+
+        if ($request->status === 'needs_documents' && $previousStatus !== 'needs_documents') {
+            try {
+                $reminderService->sendNeedsDocumentsReminder($application, 'needs_documents_status_change', Carbon::today(), true);
+                $responseMessage = 'Application updated successfully and needs-documents reminder email sent.';
+            } catch (\Throwable $exception) {
+                report($exception);
+                $responseMessage = 'Application updated successfully, but the reminder email could not be sent. Please check mail settings.';
+            }
+        }
+
         return response()->json([
-            'message' => 'Application updated successfully',
+            'message' => $responseMessage,
+            'application' => $this->applicationWithRelations($application->id)
+        ]);
+    }
+
+    public function sendDeadlineReminder($applicationId, ScholarshipReminderService $reminderService)
+    {
+        $agent = $this->ensureAgent();
+
+        $application = ScholarshipApplication::with([
+                'student:id,name,email',
+                'agent:id,name,email',
+                'scholarship:id,title,university_name,deadline'
+            ])
+            ->where('agent_id', $agent->id)
+            ->find($applicationId);
+
+        if (!$application) {
+            return response()->json([
+                'message' => 'Application not found'
+            ], 404);
+        }
+
+        if (!$application->scholarship || !$application->scholarship->deadline) {
+            return response()->json([
+                'message' => 'No scholarship deadline is available for this application.'
+            ], 422);
+        }
+
+        if (Carbon::parse($application->scholarship->deadline)->startOfDay()->lt(Carbon::today())) {
+            return response()->json([
+                'message' => 'Deadline reminder cannot be sent because the deadline has already passed.'
+            ], 422);
+        }
+
+        try {
+            $reminderService->sendNeedsDocumentsReminder($application, 'manual_deadline_reminder', Carbon::today(), true);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'The reminder email could not be sent. Please check mail settings and try again.'
+            ], 500);
+        }
+
+        return response()->json([
+            'message' => 'Deadline reminder email sent successfully.',
             'application' => $this->applicationWithRelations($application->id)
         ]);
     }
