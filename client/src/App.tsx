@@ -7,6 +7,7 @@ import LandingPage from "./views/LandingPage";
 import Login from "./views/Login";
 import Register from "./views/Register";
 import AdminDashboard from "./views/AdminDashboard";
+import AdminStudentsPage from "./views/AdminStudentsPage";
 import AgentDashboard from "./views/AgentDashboard";
 import StudentDashboard from "./views/StudentDashboard";
 import MainLayout from "./layouts/MainLayout";
@@ -91,6 +92,15 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
               <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/students"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminStudentsPage />
             </ProtectedRoute>
           }
         />
