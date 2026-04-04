@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   LayoutDashboard,
   Globe,
@@ -262,7 +262,7 @@ export default function AgentDashboard() {
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
+  const handleChangePassword = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setPasswordError("");
     setPasswordSuccess("");
@@ -300,7 +300,7 @@ export default function AgentDashboard() {
     }
   };
 
-  const handleScholarshipSubmit = async (e: React.FormEvent) => {
+  const handleScholarshipSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmittingScholarship(true);
     setFormError("");
@@ -445,45 +445,64 @@ export default function AgentDashboard() {
   const mustChangePassword = Boolean(user.must_change_password);
 
   return (
-    <div className="flex min-h-[calc(100vh-88px)] bg-slate-100">
-      <aside className="w-72 bg-slate-900 text-white shadow-xl flex flex-col">
-        <div className="p-6 border-b border-white/10">
-          <h1 className="text-2xl font-bold">Agent workspace</h1>
-        </div>
+  <div className="min-h-[calc(100vh-88px)] bg-slate-100">
+ <aside className="fixed left-0 top-[136px] h-[calc(100vh-136px)] w-72 overflow-y-auto bg-slate-900 text-white shadow-xl flex flex-col z-30">
+  <div className="h-full overflow-y-auto">
+    <div className="px-8 py-7 border-b border-white/10">
+      <h1 className="text-2xl font-bold">Agent workspace</h1>
+    </div>
 
-        <nav className="flex-1 p-4 space-y-2">
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${activeTab === "overview" ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"}`}
-          >
-            <LayoutDashboard size={18} /> Overview
-          </button>
-          <button
-            onClick={() => setActiveTab("scholarships")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${activeTab === "scholarships" ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"}`}
-            disabled={mustChangePassword}
-          >
-            <BookOpen size={18} /> Scholarships
-          </button>
-          <button
-            onClick={() => setActiveTab("applications")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${activeTab === "applications" ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"}`}
-            disabled={mustChangePassword}
-          >
-            <FileText size={18} /> Applications
-          </button>
+    <nav className="p-5 space-y-3">
+      <button
+        onClick={() => setActiveTab("overview")}
+        className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl text-left transition ${
+          activeTab === "overview"
+            ? "bg-blue-600 text-white"
+            : "text-slate-200 hover:bg-white/10"
+        }`}
+      >
+        <LayoutDashboard size={20} />
+        <span className="text-lg font-medium">Overview</span>
+      </button>
 
-          <button
-            onClick={handleLogout}
-            className="mt-6 w-full text-left px-4 py-3 text-red-300 hover:bg-red-500/10 rounded-xl"
-          >
-            Logout
-          </button>
-        </nav>
-      </aside>
+      <button
+        onClick={() => setActiveTab("scholarships")}
+        className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl text-left transition ${
+          activeTab === "scholarships"
+            ? "bg-blue-600 text-white"
+            : "text-slate-200 hover:bg-white/10"
+        }`}
+        disabled={mustChangePassword}
+      >
+        <BookOpen size={20} />
+        <span className="text-lg font-medium">Scholarships</span>
+      </button>
 
-      <main className="flex-1 overflow-auto p-8">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-8">
+      <button
+        onClick={() => setActiveTab("applications")}
+        className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl text-left transition ${
+          activeTab === "applications"
+            ? "bg-blue-600 text-white"
+            : "text-slate-200 hover:bg-white/10"
+        }`}
+        disabled={mustChangePassword}
+      >
+        <FileText size={20} />
+        <span className="text-lg font-medium">Applications</span>
+      </button>
+
+      <button
+        onClick={handleLogout}
+        className="mt-8 w-full text-left px-6 py-4 rounded-2xl text-red-300 hover:bg-red-500/10 transition"
+      >
+        <span className="text-lg font-medium">Logout</span>
+      </button>
+    </nav>
+  </div>
+</aside>
+
+    <main className="ml-80 p-8">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-8">
           <div>
             <h2 className="text-3xl font-bold text-slate-900">Welcome back, {user.name}</h2>
           </div>
