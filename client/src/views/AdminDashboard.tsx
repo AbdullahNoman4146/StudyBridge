@@ -245,30 +245,49 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="flex min-h-[calc(100vh-88px)] bg-gray-100">
-      <aside className="w-64 bg-white shadow-md flex flex-col">
-        <nav className="flex-1 p-4">
-          <a href="/admin-dashboard" className="flex items-center gap-3 px-4 py-3 text-white bg-blue-600 rounded-lg mb-2">
+  <div className="min-h-[calc(100vh-88px)] bg-gray-100">
+    <aside className="fixed left-0 top-[126px] z-30 h-[calc(100vh-126px)] w-80 bg-white shadow-md">
+      <div className="h-full overflow-y-auto p-4">
+        <nav className="flex-1">
+          <a
+            href="/admin-dashboard"
+            className="flex items-center gap-3 px-4 py-3 text-white bg-blue-600 rounded-lg mb-2"
+          >
             <LayoutDashboard size={20} /> Dashboard
           </a>
 
-          <a href="/students" className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg mb-2">
+          <a
+            href="/students"
+            className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg mb-2"
+          >
             <Users size={20} /> Students
           </a>
 
-          <a href="/applications" className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg mb-2">
+          <a
+            href="/applications"
+            className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg mb-2"
+          >
             <FileText size={20} /> Applications
           </a>
 
-          <a href="/documents" className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg mb-2">
+          <a
+            href="/documents"
+            className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg mb-2"
+          >
             <File size={20} /> Documents
           </a>
 
-          <a href="/countries-visa" className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg mb-2">
+          <a
+            href="/countries-visa"
+            className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg mb-2"
+          >
             <Globe size={20} /> Countries & Visa
           </a>
 
-          <a href="/settings" className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg mb-2">
+          <a
+            href="/settings"
+            className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg mb-2"
+          >
             <Settings size={20} /> Settings
           </a>
 
@@ -279,10 +298,11 @@ export default function AdminDashboard() {
             Logout
           </button>
         </nav>
-      </aside>
+      </div>
+    </aside>
 
-      <main className="flex-1 overflow-auto">
-        <div className="p-8">
+    <main className="ml-80">
+      <div className="p-8">
           <div className="flex justify-between mb-8">
             <div>
               <h2 className="text-3xl font-bold text-gray-800">Admin Dashboard</h2>

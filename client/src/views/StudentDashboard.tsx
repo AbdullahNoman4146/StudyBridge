@@ -660,7 +660,62 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-88px)] bg-slate-100 p-6 md:p-8">
+  <div className="min-h-[calc(100vh-88px)] bg-slate-100">
+    <aside className="fixed left-0 top-[122px] z-30 h-[calc(100vh-122px)] w-80 bg-white shadow-md">
+      <div className="h-full overflow-y-auto p-4">
+        <div className="px-4 py-3 mb-3 border-b border-slate-200">
+          <h2 className="text-2xl font-bold text-slate-900">Student workspace</h2>
+          <p className="text-sm text-slate-500 mt-1">Manage scholarships and applications</p>
+        </div>
+
+        <nav className="space-y-2">
+          <button
+            onClick={() => setActiveTab("browse")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${
+              activeTab === "browse"
+                ? "bg-blue-600 text-white"
+                : "text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            <BookOpen size={20} />
+            <span className="font-medium">Browse Scholarships</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("applications")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${
+              activeTab === "applications"
+                ? "bg-blue-600 text-white"
+                : "text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            <FileCheck2 size={20} />
+            <span className="font-medium">My Applications</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("interested")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${
+              activeTab === "interested"
+                ? "bg-blue-600 text-white"
+                : "text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            <Heart size={20} />
+            <span className="font-medium">Interested</span>
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="mt-6 w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition"
+          >
+            <span className="font-medium">Logout</span>
+          </button>
+        </nav>
+      </div>
+    </aside>
+
+    <main className="ml-80 p-6 md:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
           <div>
@@ -668,18 +723,12 @@ export default function StudentDashboard() {
             <p className="text-slate-600 mt-1">Explore scholarships, save interesting options, upload documents, and chat with your assigned agent inside each application.</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-              <p className="text-sm font-semibold text-slate-900">{user?.name}</p>
-              <p className="text-xs text-slate-500 mt-1">{user?.email}</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="px-4 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 font-medium"
-            >
-              Logout
-            </button>
-          </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+  <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
+    <p className="text-sm font-semibold text-slate-900">{user?.name}</p>
+    <p className="text-xs text-slate-500 mt-1">{user?.email}</p>
+  </div>
+</div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
@@ -720,26 +769,7 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3 mb-6">
-          <button
-            onClick={() => setActiveTab("browse")}
-            className={`px-5 py-3 rounded-2xl font-medium transition ${activeTab === "browse" ? "bg-blue-600 text-white" : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"}`}
-          >
-            Browse Scholarships
-          </button>
-          <button
-            onClick={() => setActiveTab("applications")}
-            className={`px-5 py-3 rounded-2xl font-medium transition ${activeTab === "applications" ? "bg-blue-600 text-white" : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"}`}
-          >
-            My Applications
-          </button>
-          <button
-            onClick={() => setActiveTab("interested")}
-            className={`inline-flex items-center gap-2 px-5 py-3 rounded-2xl font-medium transition ${activeTab === "interested" ? "bg-blue-600 text-white" : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"}`}
-          >
-            <Heart size={16} /> Interested
-          </button>
-        </div>
+    
 
         {pageError && (
           <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm">
@@ -1080,6 +1110,7 @@ export default function StudentDashboard() {
           </section>
         )}
       </div>
+      </main>
     </div>
   );
 }
