@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   createAgent,
   deleteAgent,
-  deleteStudent,
   getAdminSummary,
   getAgentsList,
   getCountries,
   getCurrentUser,
-  getStudentsList,
   logout
 } from "../api/auth";
 import { clearAuthSession } from "../helpers/authStorage";
@@ -33,7 +32,7 @@ interface Country {
   name: string;
 }
 
-type ViewMode = "students" | "agents" | null;
+type ViewMode = "agents" | null;
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -43,7 +42,6 @@ export default function AdminDashboard() {
     agents_count: 0
   });
 
-  const [students, setStudents] = useState<any[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
   const [activeView, setActiveView] = useState<ViewMode>(null);
   const [listLoading, setListLoading] = useState(false);
@@ -89,19 +87,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleShowStudents = async () => {
-    setActiveView("students");
-    setListLoading(true);
-    try {
-      const data = await getStudentsList();
-      setStudents(data);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setListLoading(false);
-    }
-  };
-
   const handleShowAgents = async () => {
     setActiveView("agents");
     setListLoading(true);
@@ -112,19 +97,6 @@ export default function AdminDashboard() {
       console.error(error);
     } finally {
       setListLoading(false);
-    }
-  };
-
-  const handleDeleteStudent = async (id: number) => {
-    const confirmed = window.confirm("Are you sure you want to remove this student?");
-    if (!confirmed) return;
-
-    try {
-      await deleteStudent(id);
-      setStudents((prev) => prev.filter((item) => item.id !== id));
-      await refreshSummary();
-    } catch (error: any) {
-      alert(error.message || "Failed to remove student");
     }
   };
 
@@ -210,7 +182,9 @@ export default function AdminDashboard() {
     }
   });
 
-  const availableCountryCount = countries.filter((country) => !assignedCountryMap.has(country.id)).length;
+  const availableCountryCount = countries.filter(
+    (country) => !assignedCountryMap.has(country.id)
+  ).length;
 
   const alerts = [
     {
@@ -245,23 +219,22 @@ export default function AdminDashboard() {
   ];
 
   return (
-  <div className="min-h-[calc(100vh-88px)] bg-gray-100">
-    <aside className="fixed left-0 top-[126px] z-30 h-[calc(100vh-126px)] w-80 bg-white shadow-md">
-      <div className="h-full overflow-y-auto p-4">
-        <nav className="flex-1">
-          <a
-            href="/admin-dashboard"
+    <div className="flex min-h-[calc(100vh-88px)] bg-gray-100">
+      <aside className="w-64 bg-white shadow-md flex flex-col">
+        <nav className="flex-1 p-4">
+          <Link
+            to="/admin-dashboard"
             className="flex items-center gap-3 px-4 py-3 text-white bg-blue-600 rounded-lg mb-2"
           >
             <LayoutDashboard size={20} /> Dashboard
-          </a>
+          </Link>
 
-          <a
-            href="/students"
+          <Link
+            to="/admin/students"
             className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg mb-2"
           >
             <Users size={20} /> Students
-          </a>
+          </Link>
 
           <a
             href="/applications"
@@ -298,11 +271,10 @@ export default function AdminDashboard() {
             Logout
           </button>
         </nav>
-      </div>
-    </aside>
+      </aside>
 
-    <main className="ml-80">
-      <div className="p-8">
+      <main className="flex-1 overflow-auto">
+        <div className="p-8">
           <div className="flex justify-between mb-8">
             <div>
               <h2 className="text-3xl font-bold text-gray-800">Admin Dashboard</h2>
@@ -322,18 +294,15 @@ export default function AdminDashboard() {
           </div>
 
           <div className="grid grid-cols-4 gap-6 mb-8">
-            <button
-              onClick={handleShowStudents}
-              className="bg-white rounded-lg shadow-md p-6 text-left hover:shadow-lg transition"
-            >
+            <div className="bg-white rounded-lg shadow-md p-6">
               <div className="flex justify-between mb-4">
                 <Users className="text-blue-600" size={24} />
                 <TrendingUp className="text-green-500" size={20} />
               </div>
               <p className="text-gray-500 text-sm">Total Students</p>
               <p className="text-3xl font-bold">{summary.students_count}</p>
-              <p className="text-xs text-blue-600 mt-2">Click to view list</p>
-            </button>
+              
+            </div>
 
             <button
               onClick={handleShowAgents}
@@ -416,8 +385,15 @@ export default function AdminDashboard() {
               >
                 <option value="">Select assigned country</option>
                 {countries.map((country) => (
-                  <option key={country.id} value={country.id} disabled={assignedCountryMap.has(country.id)}>
-                    {country.name}{assignedCountryMap.has(country.id) ? ` — already assigned to ${assignedCountryMap.get(country.id)}` : ""}
+                  <option
+                    key={country.id}
+                    value={country.id}
+                    disabled={assignedCountryMap.has(country.id)}
+                  >
+                    {country.name}
+                    {assignedCountryMap.has(country.id)
+                      ? ` — already assigned to ${assignedCountryMap.get(country.id)}`
+                      : ""}
                   </option>
                 ))}
               </select>
@@ -439,12 +415,10 @@ export default function AdminDashboard() {
             </form>
           </div>
 
-          {activeView && (
+          {activeView === "agents" && (
             <div className="bg-white rounded-lg shadow-md p-6 mb-8">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-800">
-                  {activeView === "students" ? "Students List" : "Agents List"}
-                </h3>
+                <h3 className="text-xl font-bold text-gray-800">Agents List</h3>
 
                 <button
                   onClick={() => setActiveView(null)}
@@ -456,49 +430,6 @@ export default function AdminDashboard() {
 
               {listLoading ? (
                 <p className="text-gray-500">Loading list...</p>
-              ) : activeView === "students" ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border border-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="text-left px-4 py-3 border-b">ID</th>
-                        <th className="text-left px-4 py-3 border-b">Name</th>
-                        <th className="text-left px-4 py-3 border-b">Email</th>
-                        <th className="text-left px-4 py-3 border-b">Phone</th>
-                        <th className="text-left px-4 py-3 border-b">Address</th>
-                        <th className="text-left px-4 py-3 border-b">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {students.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="px-4 py-4 text-center text-gray-500">
-                            No students found
-                          </td>
-                        </tr>
-                      ) : (
-                        students.map((student) => (
-                          <tr key={student.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 border-b">{student.id}</td>
-                            <td className="px-4 py-3 border-b">{student.name}</td>
-                            <td className="px-4 py-3 border-b">{student.email}</td>
-                            <td className="px-4 py-3 border-b">{student.student_profile?.phone || "-"}</td>
-                            <td className="px-4 py-3 border-b">{student.student_profile?.address || "-"}</td>
-                            <td className="px-4 py-3 border-b">
-                              <button
-                                onClick={() => handleDeleteStudent(student.id)}
-                                className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
-                              >
-                                <Trash2 size={16} />
-                                Remove
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full border border-gray-200">

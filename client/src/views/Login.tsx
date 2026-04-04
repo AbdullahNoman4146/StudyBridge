@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login } from "../api/auth";
 import { setAuthSession } from "../helpers/authStorage";
+import AuthPageShell from "../components/auth/AuthPageShell";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -44,75 +45,75 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-88px)] items-center justify-center bg-gray-100 px-4 py-10 sm:p-8">
-      <div className="w-full max-w-md rounded-3xl border border-gray-100 bg-white p-8 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-        <div className="mb-8 text-center">
-          <h1 className="mb-2 text-3xl font-bold text-blue-600">StudyBridge</h1>
-          <p className="text-gray-600">Student Consultancy Operations Platform</p>
+  <AuthPageShell>
+    <div className="w-full max-w-md rounded-3xl border border-white/60 bg-white/88 p-8 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+      <div className="mb-8 text-center">
+        <h1 className="mb-2 text-3xl font-bold text-blue-600">StudyBridge</h1>
+        <p className="text-gray-600">Student Consultancy Operations Platform</p>
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <form className="space-y-6" onSubmit={handleLogin}>
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Email Address</label>
+          <div className="relative">
+            <Mail
+              className="absolute left-3 top-1/2 -translate-y-1/2 transform text-gray-400"
+              size={20}
+            />
+            <input
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full rounded-2xl border border-gray-300 bg-white/90 py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {error}
+        <div>
+          <label className="mb-2 block text-sm font-medium text-gray-700">Password</label>
+          <div className="relative">
+            <Lock
+              className="absolute left-3 top-1/2 -translate-y-1/2 transform text-gray-400"
+              size={20}
+            />
+            <input
+              type="password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full rounded-2xl border border-gray-300 bg-white/90 py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
-        )}
-
-        <form className="space-y-6" onSubmit={handleLogin}>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Email Address</label>
-            <div className="relative">
-              <Mail
-                className="absolute left-3 top-1/2 -translate-y-1/2 transform text-gray-400"
-                size={20}
-              />
-              <input
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full rounded-2xl border border-gray-300 py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Password</label>
-            <div className="relative">
-              <Lock
-                className="absolute left-3 top-1/2 -translate-y-1/2 transform text-gray-400"
-                size={20}
-              />
-              <input
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full rounded-2xl border border-gray-300 py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-2xl bg-blue-600 py-3 font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? "Logging in..." : "Login"}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <p>
-            Don&apos;t have an account?{" "}
-            <Link to="/register" className="font-medium text-blue-600 hover:text-blue-700">
-              Register here
-            </Link>
-          </p>
-          <p className="mt-4">© 2026 StudyBridge. All Rights Reserved.</p>
         </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-2xl bg-blue-600 py-3 font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
+      </form>
+
+      <div className="mt-6 text-center text-sm text-gray-600">
+        <p>
+          Don&apos;t have an account?{" "}
+          <Link to="/register" className="font-medium text-blue-600 hover:text-blue-700">
+            Register here
+          </Link>
+        </p>
+        <p className="mt-4">© 2026 StudyBridge. All Rights Reserved.</p>
       </div>
     </div>
-  );
+  </AuthPageShell>
+);
 }
