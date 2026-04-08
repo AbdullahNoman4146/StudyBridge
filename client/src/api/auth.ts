@@ -1,36 +1,47 @@
-// build API base URL
-// - if VITE_BACKEND_ENDPOINT is provided (e.g. in production or when proxy
-//   is disabled) use it and append `/api`
-// - otherwise fall back to a relative path so the Vite dev server proxy takes
-//   over.  This prevents "Failed to fetch" when the env var isn't defined.
-const API = import.meta.env.VITE_BACKEND_ENDPOINT
+export const API = import.meta.env.VITE_BACKEND_ENDPOINT
     ? import.meta.env.VITE_BACKEND_ENDPOINT + "/api"
     : "/api";
 
-console.debug("API base URL is", API);
+export async function handleResponse(res: Response): Promise<any> {
+    const text = await res.text();
 
-export async function login(email: string, password: string) {
+    let data: unknown = null;
     try {
-        const res = await fetch(`${API}/login`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ email, password })
-        });
+        data = text ? JSON.parse(text) : null;
+    } catch {
+        data = text;
+    }
 
-        // Check if response is ok
-        if (!res.ok) {
-            const text = await res.text();
-            console.error("Login error response:", res.status, text);
-            throw new Error(`Server error: ${res.status}`);
+    if (!res.ok) {
+        if (typeof data === "object" && data !== null && "errors" in data) {
+            const errors = (data as { errors?: Record<string, string[]> }).errors;
+            if (errors) {
+                const firstKey = Object.keys(errors)[0];
+                const firstError = firstKey ? errors[firstKey]?.[0] : undefined;
+                throw new Error(firstError || "Validation failed");
+            }
         }
 
-        return res.json();
-    } catch (error) {
-        console.error("Login request failed:", error);
-        throw error;
+        if (typeof data === "object" && data !== null && "message" in data) {
+            throw new Error(String((data as { message?: string }).message || `Server error: ${res.status}`));
+        }
+
+        throw new Error(`Server error: ${res.status}`);
     }
+
+    return data;
+}
+
+export async function login(email: string, password: string) {
+    const res = await fetch(`${API}/login`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email, password })
+    });
+
+    return handleResponse(res);
 }
 
 export async function register(
@@ -40,71 +51,148 @@ export async function register(
     phone?: string,
     address?: string
 ) {
-    try {
-        const res = await fetch(`${API}/register`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ name, email, password, phone, address })
-        });
+    const res = await fetch(`${API}/register`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name, email, password, phone, address })
+    });
 
-        if (!res.ok) {
-            const text = await res.text();
-            console.error("Register error response:", res.status, text);
-            throw new Error(`Server error: ${res.status}`);
-        }
-
-        return res.json();
-    } catch (error) {
-        console.error("Register request failed:", error);
-        throw error;
-    }
+    return handleResponse(res);
 }
 
 export async function getCurrentUser() {
-    try {
-        const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
-        const res = await fetch(`${API}/me`, {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
-
-        if (!res.ok) {
-            const text = await res.text();
-            console.error("Get user error response:", res.status, text);
-            throw new Error(`Server error: ${res.status}`);
+    const res = await fetch(`${API}/me`, {
+        headers: {
+            Authorization: `Bearer ${token}`
         }
+    });
 
-        return res.json();
-    } catch (error) {
-        console.error("Get user request failed:", error);
-        throw error;
-    }
+    return handleResponse(res);
 }
 
 export async function logout() {
-    try {
-        const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
-        const res = await fetch(`${API}/logout`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
-
-        if (!res.ok) {
-            const text = await res.text();
-            console.error("Logout error response:", res.status, text);
-            throw new Error(`Server error: ${res.status}`);
+    const res = await fetch(`${API}/logout`, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`
         }
+    });
 
-        return res.json();
-    } catch (error) {
-        console.error("Logout request failed:", error);
-        throw error;
-    }
+    return handleResponse(res);
+}
+
+export async function getCountries() {
+    const res = await fetch(`${API}/countries`);
+    return handleResponse(res);
+}
+
+export async function createAgent(
+    name: string,
+    email: string,
+    password: string,
+    country_id: number
+) {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`${API}/admin/agents`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name, email, password, country_id })
+    });
+
+    return handleResponse(res);
+}
+
+export async function getAdminSummary() {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`${API}/admin/summary`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    return handleResponse(res);
+}
+
+export async function getStudentsList() {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`${API}/admin/students`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    return handleResponse(res);
+}
+
+export async function getAgentsList() {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`${API}/admin/agents`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    return handleResponse(res);
+}
+
+export async function deleteStudent(id: number) {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`${API}/admin/students/${id}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    return handleResponse(res);
+}
+
+export async function deleteAgent(id: number) {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`${API}/admin/agents/${id}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    return handleResponse(res);
+}
+
+export async function changeAgentPassword(
+    current_password: string,
+    new_password: string,
+    new_password_confirmation: string
+) {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`${API}/agent/change-password`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            current_password,
+            new_password,
+            new_password_confirmation
+        })
+    });
+
+    return handleResponse(res);
 }

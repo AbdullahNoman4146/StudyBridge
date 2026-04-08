@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { register } from "../api/auth";
+import { setAuthSession } from "../helpers/authStorage";
+import AuthPageShell from "../components/auth/AuthPageShell";
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -22,9 +24,7 @@ export default function Register() {
       const data = await register(name, email, password, phone, address);
 
       if (data.token && data.user) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("role", data.user.role);
-        localStorage.setItem("user", JSON.stringify(data.user));
+        setAuthSession(data.token, data.user);
         navigate("/student-dashboard");
       } else {
         setError(data.message || "Registration failed");
@@ -37,74 +37,79 @@ export default function Register() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-8">
-      <div className="bg-white rounded-lg shadow-md p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold text-blue-600 mb-6 text-center">Student Registration</h2>
+return (
+  <AuthPageShell>
+    <div className="w-full max-w-md rounded-3xl border border-white/60 bg-white/88 p-8 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+      <h2 className="mb-6 text-center text-2xl font-bold text-blue-600">Student Registration</h2>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
-
-        <form className="space-y-4" onSubmit={handleRegister}>
-          <input
-            type="text"
-            placeholder="Full Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-          />
-
-          <input
-            type="email"
-            placeholder="Email Address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-          />
-
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-          />
-
-          <input
-            type="text"
-            placeholder="Phone Number"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-          />
-
-          <input
-            type="text"
-            placeholder="Address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-          />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
-          >
-            {loading ? "Registering..." : "Register"}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <p>Already have an account? <a href="/login" className="text-blue-600 hover:text-blue-700 font-medium">Login here</a></p>
+      {error && (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
         </div>
+      )}
+
+      <form className="space-y-4" onSubmit={handleRegister}>
+        <input
+          type="text"
+          placeholder="Full Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          className="w-full rounded-2xl border border-gray-300 bg-white/90 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <input
+          type="email"
+          placeholder="Email Address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full rounded-2xl border border-gray-300 bg-white/90 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          className="w-full rounded-2xl border border-gray-300 bg-white/90 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <input
+          type="text"
+          placeholder="Phone Number"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          className="w-full rounded-2xl border border-gray-300 bg-white/90 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <input
+          type="text"
+          placeholder="Address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          className="w-full rounded-2xl border border-gray-300 bg-white/90 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-2xl bg-blue-600 py-3 font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? "Registering..." : "Register"}
+        </button>
+      </form>
+
+      <div className="mt-6 text-center text-sm text-gray-600">
+        <p>
+          Already have an account?{" "}
+          <Link to="/login" className="font-medium text-blue-600 hover:text-blue-700">
+            Login here
+          </Link>
+        </p>
       </div>
     </div>
-  );
+  </AuthPageShell>
+);
 }
