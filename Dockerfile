@@ -1,4 +1,4 @@
-FROM php:8.2-apache
+FROM php:8.2-cli
 
 # Build arguments from Railway variables
 ARG APP_NAME
@@ -15,53 +15,39 @@ ARG DB_DATABASE
 ARG DB_USERNAME
 ARG DB_PASSWORD
 ARG JWT_SECRET
-ARG VITE_BACKEND_ENDPOINT
+ARG PORT=8080
 
-# Install system packages
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     curl \
+    unzip \
+    zip \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
-    zip \
-    unzip \
     nodejs \
     npm \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
+# Install PHP extensions needed by Laravel
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
-
-# Make Apache use only one MPM
-RUN a2dismod mpm_event || true
-RUN a2dismod mpm_worker || true
-RUN rm -f /etc/apache2/mods-enabled/mpm_event.load \
-    /etc/apache2/mods-enabled/mpm_event.conf \
-    /etc/apache2/mods-enabled/mpm_worker.load \
-    /etc/apache2/mods-enabled/mpm_worker.conf
-RUN a2enmod mpm_prefork rewrite
-
-# Set Apache document root to Laravel public/
-ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf /etc/apache2/sites-enabled/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 # Get Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copy app files
-COPY server/ /var/www/html/
-COPY client/ /var/www/html/client/
+# Copy backend and frontend
+COPY server/ /app
+COPY client/ /app/client
 
 # Set working directory
-WORKDIR /var/www/html
+WORKDIR /app
 
 # Install Laravel dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
-# Build Laravel .env from Railway variables
+# Create Laravel .env from Railway variables
 RUN touch .env && \
     echo "APP_NAME=${APP_NAME}" >> .env && \
     echo "APP_ENV=${APP_ENV}" >> .env && \
@@ -78,19 +64,20 @@ RUN touch .env && \
     echo "DB_PASSWORD=${DB_PASSWORD}" >> .env && \
     echo "JWT_SECRET=${JWT_SECRET}" >> .env
 
-# Build React frontend and move into Laravel public/
+# Build frontend
 RUN cd client && npm ci && npm run build
-RUN cp -r /var/www/html/client/dist/* /var/www/html/public/
 
-# Ensure Laravel writable folders exist and are writable
-RUN mkdir -p /var/www/html/storage/framework/cache \
-    /var/www/html/storage/framework/sessions \
-    /var/www/html/storage/framework/views \
-    /var/www/html/storage/logs \
-    /var/www/html/bootstrap/cache && \
-    chown -R www-data:www-data /var/www/html && \
-    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+# Copy built frontend into Laravel public folder
+RUN cp -r /app/client/dist/* /app/public/
 
-EXPOSE 80
+# Make Laravel writable folders
+RUN mkdir -p storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    bootstrap/cache && \
+    chmod -R 775 storage bootstrap/cache
 
-CMD ["apache2-foreground"]
+EXPOSE 8080
+
+CMD ["sh", "-lc", "php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"]
