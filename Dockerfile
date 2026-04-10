@@ -15,6 +15,7 @@ ARG DB_PORT
 ARG DB_DATABASE
 ARG DB_USERNAME
 ARG DB_PASSWORD
+ARG JWT_SECRET
 
 ARG VITE_BACKEND_ENDPOINT
 
@@ -68,6 +69,7 @@ RUN echo "APP_NAME=${APP_NAME}" >> .env && \
     echo "APP_ENV=${APP_ENV}" >> .env && \
     echo "APP_KEY=${APP_KEY}" >> .env && \
     echo "APP_DEBUG=${APP_DEBUG}" >> .env && \
+    echo "APP_URL=${APP_URL}" >> .env && \
     echo "FRONTEND_URL=${FRONTEND_URL}" >> .env && \
     echo "LOG_LEVEL=${LOG_LEVEL}" >> .env && \
     echo "DB_CONNECTION=${DB_CONNECTION}" >> .env && \
@@ -75,7 +77,8 @@ RUN echo "APP_NAME=${APP_NAME}" >> .env && \
     echo "DB_DATABASE=${DB_DATABASE}" >> .env && \
     echo "DB_USERNAME=${DB_USERNAME}" >> .env && \
     echo "DB_PASSWORD=${DB_PASSWORD}" >> .env && \
-    echo "DB_PORT=${DB_PORT}" >> .env
+    echo "DB_PORT=${DB_PORT}" >> .env && \
+    echo "JWT_SECRET=${JWT_SECRET}" >> .env
 
 # Set permissions for Laravel storage and cache
 RUN chown -R www-data:www-data /var/www/html && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
