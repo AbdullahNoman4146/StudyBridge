@@ -15,14 +15,11 @@ import {
   LayoutDashboard,
   Users,
   UserCheck,
-  File,
   Globe,
   Settings,
   TrendingUp,
   Clock,
   FileWarning,
-  BarChart3,
-  Bell,
   Menu,
   X
 } from "lucide-react";
@@ -159,38 +156,6 @@ export default function AdminDashboard() {
     (country) => !assignedCountryMap.has(country.id)
   ).length;
 
-  const alerts = [
-    {
-      title: "Visa Expiry Alert",
-      desc: "15 student visas expiring in 30 days",
-      time: "2 hours ago"
-    },
-    {
-      title: "Pending Documents",
-      desc: "23 documents need verification",
-      time: "5 hours ago"
-    },
-    {
-      title: "New Applications",
-      desc: "12 new applications received",
-      time: "1 day ago"
-    },
-    {
-      title: "Approvals Completed",
-      desc: "8 applications approved today",
-      time: "1 day ago"
-    }
-  ];
-
-  const chartData = [
-    { month: "Jan", value: 85, label: "142" },
-    { month: "Feb", value: 70, label: "118" },
-    { month: "Mar", value: 90, label: "156" },
-    { month: "Apr", value: 75, label: "128" },
-    { month: "May", value: 95, label: "167" },
-    { month: "Jun", value: 88, label: "148" }
-  ];
-
   return (
     <div className="min-h-[calc(100vh-72px)] bg-gray-100 relative">
       {isSidebarOpen && (
@@ -258,12 +223,14 @@ export default function AdminDashboard() {
                        <Globe size={20} /> Countries
             </Link>
 
-            <a
-              href="/settings"
-              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
-            >
-              <Settings size={20} /> Settings
-            </a>
+           <Link
+  to="/admin/settings"
+  onClick={() => setIsSidebarOpen(false)}
+  className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
+>
+  <Settings size={20} />
+  Settings
+</Link>
 
             <button
               onClick={handleLogout}

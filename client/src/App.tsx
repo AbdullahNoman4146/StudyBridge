@@ -15,6 +15,7 @@ import { getCurrentUser } from "./api/auth";
 import { clearAuthSession } from "./helpers/authStorage";
 import AdminAgentsPage from "./views/AdminAgentsPage";
 import AdminCountriesPage from "./views/AdminCountriesPage";
+import AdminSettingsPage from "./views/AdminSettingsPage";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -59,7 +60,7 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
     checkAuth();
   }, [allowedRoles]);
 
-if (isLoading) {
+  if (isLoading) {
     return <CenteredLoader text="Checking authentication..." />;
   }
 
@@ -117,6 +118,24 @@ export default function App() {
         />
 
         <Route
+          path="/admin/countries"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminCountriesPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/settings"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminSettingsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/agent-dashboard"
           element={
             <ProtectedRoute allowedRoles={["agent"]}>
@@ -124,14 +143,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/admin/countries"
-          element={
-            <ProtectedRoute allowedRoles={["admin"]}>
-            <AdminCountriesPage />
-            </ProtectedRoute>
-                  }
-          />
 
         <Route
           path="/student-dashboard"

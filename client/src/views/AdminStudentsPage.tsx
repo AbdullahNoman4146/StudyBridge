@@ -14,7 +14,6 @@ import {
   LayoutDashboard,
   Users,
   UserCheck,
-  File,
   Globe,
   Settings,
   Trash2,
@@ -216,13 +215,14 @@ export default function AdminStudentsPage() {
                        <Globe size={20} /> Countries
             </Link>
 
-            <a
-              href="/settings"
-              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
-            >
-              <Settings size={20} />
-              Settings
-            </a>
+            <Link
+  to="/admin/settings"
+  onClick={() => setIsSidebarOpen(false)}
+  className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
+>
+  <Settings size={20} />
+  Settings
+</Link>
 
             <button
               onClick={handleLogout}
