@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  getCurrentUser,
-  getCountries,
-  createCountry,
-  logout,
-} from "../api/auth";
-import { clearAuthSession } from "../helpers/authStorage";
 import CenteredLoader from "../components/CenteredLoader";
+import { getCurrentUser, logout } from "../api/auth";
+import { clearAuthSession } from "../helpers/authStorage";
+import {
+  getStoredTheme,
+  applyTheme,
+  type AppTheme,
+} from "../helpers/theme";
 
 import {
   LayoutDashboard,
@@ -15,46 +15,30 @@ import {
   UserCheck,
   Globe,
   Settings,
+  Moon,
+  Sun,
   Menu,
   X,
-  PlusCircle,
 } from "lucide-react";
 
-interface Country {
-  id: number;
-  name: string;
-}
-
-export default function AdminCountriesPage() {
+export default function AdminSettingsPage() {
   const [user, setUser] = useState<any>(null);
-  const [countries, setCountries] = useState<Country[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const [countryName, setCountryName] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState("");
-  const [formSuccess, setFormSuccess] = useState("");
+  const [selectedTheme, setSelectedTheme] = useState<AppTheme>("light");
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
-    loadCountriesPage();
+    loadPage();
   }, []);
 
-  const loadCountriesPage = async () => {
+  const loadPage = async () => {
     setLoading(true);
 
     try {
-      const [userData, countriesData] = await Promise.all([
-        getCurrentUser(),
-        getCountries(),
-      ]);
-
-      const sortedCountries = [...countriesData].sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
-
+      const userData = await getCurrentUser();
       setUser(userData);
-      setCountries(sortedCountries);
+      setSelectedTheme(getStoredTheme());
     } catch (error) {
       console.error(error);
     } finally {
@@ -62,26 +46,14 @@ export default function AdminCountriesPage() {
     }
   };
 
-  const handleAddCountry = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError("");
-    setFormSuccess("");
-    setSubmitting(true);
+  const handleThemeChange = (theme: AppTheme) => {
+    setSelectedTheme(theme);
+    applyTheme(theme);
+    setSuccessMessage(`Theme changed to ${theme} mode successfully.`);
 
-    try {
-      const data = await createCountry(countryName);
-
-      setCountries((prev) =>
-        [...prev, data.country].sort((a, b) => a.name.localeCompare(b.name))
-      );
-
-      setFormSuccess(`${data.country.name} added successfully`);
-      setCountryName("");
-    } catch (error: any) {
-      setFormError(error.message || "Failed to add country");
-    } finally {
-      setSubmitting(false);
-    }
+    setTimeout(() => {
+      setSuccessMessage("");
+    }, 2500);
   };
 
   const handleLogout = async () => {
@@ -96,7 +68,12 @@ export default function AdminCountriesPage() {
   };
 
   if (loading) {
-    return <CenteredLoader text="Loading countries..." />;
+    return (
+      <CenteredLoader
+        text="Loading settings..."
+        containerClassName="min-h-[calc(100vh-72px)]"
+      />
+    );
   }
 
   if (!user) {
@@ -127,7 +104,7 @@ export default function AdminCountriesPage() {
                 Admin workspace
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Manage countries and operations
+                Manage system settings and preferences
               </p>
             </div>
 
@@ -171,20 +148,20 @@ export default function AdminCountriesPage() {
             <Link
               to="/admin/countries"
               onClick={() => setIsSidebarOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 text-white bg-blue-600 rounded-xl"
+              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
             >
               <Globe size={20} />
               Countries
             </Link>
 
             <Link
-  to="/admin/settings"
-  onClick={() => setIsSidebarOpen(false)}
-  className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
->
-  <Settings size={20} />
-  Settings
-</Link>
+              to="/admin/settings"
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 text-white bg-blue-600 rounded-xl"
+            >
+              <Settings size={20} />
+              Settings
+            </Link>
 
             <button
               onClick={handleLogout}
@@ -197,7 +174,7 @@ export default function AdminCountriesPage() {
       </aside>
 
       <main className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 lg:ml-72">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between gap-3 mb-6 lg:hidden">
             <button
               type="button"
@@ -212,10 +189,10 @@ export default function AdminCountriesPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
             <div className="min-w-0">
               <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 break-words">
-                Countries
+                Settings
               </h2>
               <p className="text-gray-600 mt-1 break-words">
-                Add countries for agent assignment
+                Change the appearance and basic preferences of the platform
               </p>
             </div>
 
@@ -233,88 +210,82 @@ export default function AdminCountriesPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <PlusCircle className="text-blue-600" size={22} />
-              <h3 className="text-xl font-bold text-gray-800">Add Country</h3>
+          <div className="bg-white rounded-2xl shadow-md p-5 sm:p-6 mb-6">
+            <div className="mb-4">
+              <h3 className="text-xl font-bold text-gray-800">Appearance</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Select the theme you want to use in the dashboard
+              </p>
             </div>
 
-            {formError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                {formError}
+            {successMessage && (
+              <div className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {successMessage}
               </div>
             )}
 
-            {formSuccess && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
-                {formSuccess}
-              </div>
-            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => handleThemeChange("light")}
+                className={`rounded-2xl border p-5 text-left transition ${
+                  selectedTheme === "light"
+                    ? "border-blue-600 ring-2 ring-blue-100 bg-blue-50"
+                    : "border-gray-200 bg-white hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-11 h-11 rounded-full bg-yellow-100 flex items-center justify-center">
+                    <Sun className="text-yellow-600" size={22} />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-800">Light Mode</h4>
+                    <p className="text-sm text-gray-500">Bright and clean interface</p>
+                  </div>
+                </div>
 
-            <form
-              onSubmit={handleAddCountry}
-              className="flex flex-col md:flex-row gap-4"
-            >
-              <input
-                type="text"
-                placeholder="Enter country name"
-                value={countryName}
-                onChange={(e) => setCountryName(e.target.value)}
-                required
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                  <div className="h-3 w-24 rounded bg-blue-500 mb-2"></div>
+                  <div className="h-3 w-full rounded bg-white border border-gray-200 mb-2"></div>
+                  <div className="h-3 w-4/5 rounded bg-white border border-gray-200"></div>
+                </div>
+              </button>
 
               <button
-                type="submit"
-                disabled={submitting}
-                className="w-full md:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+                type="button"
+                onClick={() => handleThemeChange("dark")}
+                className={`rounded-2xl border p-5 text-left transition ${
+                  selectedTheme === "dark"
+                    ? "border-blue-600 ring-2 ring-blue-100 bg-blue-50"
+                    : "border-gray-200 bg-white hover:bg-gray-50"
+                }`}
               >
-                {submitting ? "Adding..." : "Add Country"}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-11 h-11 rounded-full bg-slate-800 flex items-center justify-center">
+                    <Moon className="text-white" size={22} />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-800">Dark Mode</h4>
+                    <p className="text-sm text-gray-500">Low-light friendly interface</p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-700 bg-slate-900 p-3">
+                  <div className="h-3 w-24 rounded bg-blue-500 mb-2"></div>
+                  <div className="h-3 w-full rounded bg-slate-800 border border-slate-700 mb-2"></div>
+                  <div className="h-3 w-4/5 rounded bg-slate-800 border border-slate-700"></div>
+                </div>
               </button>
-            </form>
+            </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-md p-4 sm:p-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-800">Countries List</h3>
-
-              <button
-                onClick={loadCountriesPage}
-                className="w-full sm:w-auto text-sm px-4 py-2 bg-gray-100 rounded-xl hover:bg-gray-200"
-              >
-                Refresh
-              </button>
-            </div>
-
-            <div className="mb-4 text-sm text-gray-500">
-              Total countries:{" "}
-              <span className="font-semibold text-gray-800">{countries.length}</span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[420px] text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="py-3 px-4 font-semibold text-gray-700">ID</th>
-                    <th className="py-3 px-4 font-semibold text-gray-700">Country Name</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {countries.map((country) => (
-                    <tr key={country.id} className="border-b border-gray-100">
-                      <td className="py-3 px-4 text-gray-700">{country.id}</td>
-                      <td className="py-3 px-4 text-gray-800 font-medium">
-                        {country.name}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {countries.length === 0 && (
-              <p className="text-sm text-gray-500 mt-4">No countries found.</p>
-            )}
+          <div className="bg-white rounded-2xl shadow-md p-5 sm:p-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">How it works</h3>
+            <p className="text-gray-600 text-sm leading-7">
+              This setting is currently stored in the browser using localStorage.
+              That means the selected theme remains saved on this device and browser
+              even after refresh or logout, until it is changed again.
+            </p>
           </div>
         </div>
       </main>
