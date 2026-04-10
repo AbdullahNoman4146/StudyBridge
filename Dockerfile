@@ -16,6 +16,14 @@ ARG DB_USERNAME
 ARG DB_PASSWORD
 ARG JWT_SECRET
 ARG PORT=8080
+ARG MAIL_MAILER
+ARG MAIL_HOST
+ARG MAIL_PORT
+ARG MAIL_USERNAME
+ARG MAIL_PASSWORD
+ARG MAIL_ENCRYPTION
+ARG MAIL_FROM_ADDRESS
+ARG MAIL_FROM_NAME
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -62,7 +70,15 @@ RUN touch .env && \
     echo "DB_DATABASE=${DB_DATABASE}" >> .env && \
     echo "DB_USERNAME=${DB_USERNAME}" >> .env && \
     echo "DB_PASSWORD=${DB_PASSWORD}" >> .env && \
-    echo "JWT_SECRET=${JWT_SECRET}" >> .env
+    echo "JWT_SECRET=${JWT_SECRET}" >> .env && \
+    echo "MAIL_MAILER=${MAIL_MAILER}" >> .env && \
+    echo "MAIL_HOST=${MAIL_HOST}" >> .env && \
+    echo "MAIL_PORT=${MAIL_PORT}" >> .env && \
+    echo "MAIL_USERNAME=${MAIL_USERNAME}" >> .env && \
+    echo "MAIL_PASSWORD=${MAIL_PASSWORD}" >> .env && \
+    echo "MAIL_ENCRYPTION=${MAIL_ENCRYPTION}" >> .env && \
+    echo "MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}" >> .env && \
+    echo "MAIL_FROM_NAME=${MAIL_FROM_NAME}" >> .env
 
 # Build frontend
 RUN cd client && npm ci && npm run build
