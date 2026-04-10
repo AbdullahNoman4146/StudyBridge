@@ -60,3 +60,10 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_DEV }}
         run: railway up --service studybridge-web --ci
+
+      - name: Wait for app to boot
+        run: sleep 30
+
+      - name: Check deployed app
+        run: |
+          curl -I --retry 5 --retry-delay 10 --max-time 20 https://studybridge-web-production.up.railway.app
