@@ -138,6 +138,21 @@ export async function getStudentsList() {
     return handleResponse(res);
 }
 
+export async function updateStudentStatus(id: number, status: "active" | "inactive") {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`${API}/admin/students/${id}/status`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+    });
+
+    return handleResponse(res);
+}
+
 export async function getAgentsList() {
     const token = localStorage.getItem("token");
 

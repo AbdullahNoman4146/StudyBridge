@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+
 import {
   LayoutDashboard,
   Globe,
@@ -18,7 +19,8 @@ import {
   Send,
   Plus,
   X,
-  ListChecks
+  ListChecks,
+  Menu
 } from "lucide-react";
 import { changeAgentPassword, getCurrentUser, logout } from "../api/auth";
 import {
@@ -116,7 +118,11 @@ function ChatMessageBubble({ item, currentUserId }: { item: ApplicationMessageIt
 
   return (
     <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${isMine ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-800 border border-slate-200"}`}>
+      <div
+        className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+          isMine ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-800 border border-slate-200"
+        }`}
+      >
         <div className="flex items-center gap-2 text-xs mb-1 opacity-90">
           <span className="font-semibold">{item.sender?.name || (isMine ? "You" : "Student")}</span>
           <span>•</span>
@@ -132,6 +138,7 @@ export default function AgentDashboard() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<AgentTab>("overview");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -152,7 +159,9 @@ export default function AgentDashboard() {
   const [editingScholarshipId, setEditingScholarshipId] = useState<number | null>(null);
   const [savingApplicationId, setSavingApplicationId] = useState<number | null>(null);
   const [expandedApplicationId, setExpandedApplicationId] = useState<number | null>(null);
-  const [applicationDrafts, setApplicationDrafts] = useState<Record<number, { status: ScholarshipApplication["status"]; agent_note: string }>>({});
+  const [applicationDrafts, setApplicationDrafts] = useState<
+    Record<number, { status: ScholarshipApplication["status"]; agent_note: string }>
+  >({});
   const [messageDrafts, setMessageDrafts] = useState<Record<number, string>>({});
   const [sendingMessageForId, setSendingMessageForId] = useState<number | null>(null);
   const [sendingDeadlineReminderForId, setSendingDeadlineReminderForId] = useState<number | null>(null);
@@ -198,8 +207,12 @@ export default function AgentDashboard() {
 
   const stats = useMemo(() => {
     const activeScholarships = scholarships.filter((item) => item.status === "active").length;
-    const openApplications = applications.filter((item) => ["submitted", "under_review", "needs_documents"].includes(item.status)).length;
-    const upcomingDeadlines = scholarships.filter((item) => item.status === "active" && new Date(item.deadline) >= new Date()).length;
+    const openApplications = applications.filter((item) =>
+      ["submitted", "under_review", "needs_documents"].includes(item.status)
+    ).length;
+    const upcomingDeadlines = scholarships.filter(
+      (item) => item.status === "active" && new Date(item.deadline) >= new Date()
+    ).length;
 
     return {
       activeScholarships,
@@ -275,7 +288,10 @@ export default function AgentDashboard() {
     setSubmittingPassword(true);
 
     try {
-      const data = await changeAgentPassword(currentPassword, newPassword, confirmPassword) as { user: any; message?: string };
+      const data = (await changeAgentPassword(currentPassword, newPassword, confirmPassword)) as {
+        user: any;
+        message?: string;
+      };
 
       setUser(data.user);
       localStorage.setItem("user", JSON.stringify(data.user));
@@ -360,12 +376,8 @@ export default function AgentDashboard() {
     setApplicationDrafts((prev) => ({
       ...prev,
       [applicationId]: {
-        status: field === "status"
-          ? (value as ScholarshipApplication["status"])
-          : (prev[applicationId]?.status || "submitted"),
-        agent_note: field === "agent_note"
-          ? value
-          : (prev[applicationId]?.agent_note || "")
+        status: field === "status" ? (value as ScholarshipApplication["status"]) : prev[applicationId]?.status || "submitted",
+        agent_note: field === "agent_note" ? value : prev[applicationId]?.agent_note || ""
       }
     }));
   };
@@ -445,70 +457,109 @@ export default function AgentDashboard() {
   const mustChangePassword = Boolean(user.must_change_password);
 
   return (
-  <div className="min-h-[calc(100vh-88px)] bg-slate-100">
- <aside className="fixed left-0 top-[136px] h-[calc(100vh-136px)] w-72 overflow-y-auto bg-slate-900 text-white shadow-xl flex flex-col z-30">
-  <div className="h-full overflow-y-auto">
-    <div className="px-8 py-7 border-b border-white/10">
-      <h1 className="text-2xl font-bold">Agent workspace</h1>
-    </div>
+    <div className="min-h-[calc(100vh-88px)] bg-slate-100 relative">
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
-    <nav className="p-5 space-y-3">
-      <button
-        onClick={() => setActiveTab("overview")}
-        className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl text-left transition ${
-          activeTab === "overview"
-            ? "bg-blue-600 text-white"
-            : "text-slate-200 hover:bg-white/10"
-        }`}
+      <aside
+        className={`
+          fixed top-[88px] left-0 h-[calc(100vh-88px)] w-72 overflow-y-auto
+          bg-slate-900 text-white shadow-xl flex flex-col z-40
+          transform transition-transform duration-300
+          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0
+        `}
       >
-        <LayoutDashboard size={20} />
-        <span className="text-lg font-medium">Overview</span>
-      </button>
+        <div className="h-full overflow-y-auto">
+          <div className="px-6 sm:px-8 py-6 sm:py-7 border-b border-white/10 flex items-center justify-between">
+            <h1 className="text-xl sm:text-2xl font-bold">Agent workspace</h1>
 
-      <button
-        onClick={() => setActiveTab("scholarships")}
-        className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl text-left transition ${
-          activeTab === "scholarships"
-            ? "bg-blue-600 text-white"
-            : "text-slate-200 hover:bg-white/10"
-        }`}
-        disabled={mustChangePassword}
-      >
-        <BookOpen size={20} />
-        <span className="text-lg font-medium">Scholarships</span>
-      </button>
-
-      <button
-        onClick={() => setActiveTab("applications")}
-        className={`w-full flex items-center gap-3 px-6 py-4 rounded-2xl text-left transition ${
-          activeTab === "applications"
-            ? "bg-blue-600 text-white"
-            : "text-slate-200 hover:bg-white/10"
-        }`}
-        disabled={mustChangePassword}
-      >
-        <FileText size={20} />
-        <span className="text-lg font-medium">Applications</span>
-      </button>
-
-      <button
-        onClick={handleLogout}
-        className="mt-8 w-full text-left px-6 py-4 rounded-2xl text-red-300 hover:bg-red-500/10 transition"
-      >
-        <span className="text-lg font-medium">Logout</span>
-      </button>
-    </nav>
-  </div>
-</aside>
-
-    <main className="ml-80 p-8">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-8">
-          <div>
-            <h2 className="text-3xl font-bold text-slate-900">Welcome back, {user.name}</h2>
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              className="lg:hidden rounded-lg p-2 hover:bg-white/10"
+            >
+              <X size={20} />
+            </button>
           </div>
 
-          <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 shadow-sm">
-            <p className="text-sm font-medium text-slate-800">{user.email}</p>
+          <nav className="p-4 sm:p-5 space-y-3">
+            <button
+              onClick={() => {
+                setActiveTab("overview");
+                setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-left transition ${
+                activeTab === "overview" ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"
+              }`}
+            >
+              <LayoutDashboard size={20} />
+              <span className="text-base sm:text-lg font-medium">Overview</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("scholarships");
+                setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-left transition ${
+                activeTab === "scholarships" ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"
+              }`}
+              disabled={mustChangePassword}
+            >
+              <BookOpen size={20} />
+              <span className="text-base sm:text-lg font-medium">Scholarships</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("applications");
+                setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-left transition ${
+                activeTab === "applications" ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"
+              }`}
+              disabled={mustChangePassword}
+            >
+              <FileText size={20} />
+              <span className="text-base sm:text-lg font-medium">Applications</span>
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="mt-8 w-full text-left px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-red-300 hover:bg-red-500/10 transition"
+            >
+              <span className="text-base sm:text-lg font-medium">Logout</span>
+            </button>
+          </nav>
+        </div>
+      </aside>
+
+      <main className="px-4 sm:px-6 lg:px-8 py-6 lg:py-8 lg:ml-72">
+        <div className="flex items-center justify-between gap-3 mb-6 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-slate-700 shadow-sm"
+          >
+            <Menu size={18} />
+            Menu
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-8">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 break-words">
+              Welcome back, {user.name}
+            </h2>
+          </div>
+
+          <div className="rounded-2xl bg-white border border-slate-200 px-4 sm:px-5 py-4 shadow-sm w-full lg:w-auto">
+            <p className="text-sm font-medium text-slate-800 break-all">{user.email}</p>
             <p className="text-xs text-slate-500 mt-1">
               Assigned Country: {user.country?.name || "Not assigned"}
             </p>
@@ -651,8 +702,12 @@ export default function AgentDashboard() {
                             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                               <div>
                                 <h4 className="font-semibold text-slate-900">{application.student?.name}</h4>
-                                <p className="text-sm text-slate-600">{application.scholarship?.title} · {application.scholarship?.university_name}</p>
-                                <p className="text-xs text-slate-500 mt-1">Submitted {formatDateTime(application.submitted_at)}</p>
+                                <p className="text-sm text-slate-600">
+                                  {application.scholarship?.title} · {application.scholarship?.university_name}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-1">
+                                  Submitted {formatDateTime(application.submitted_at)}
+                                </p>
                               </div>
                               <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium ${meta.className}`}>
                                 {meta.icon} {meta.label}
@@ -693,14 +748,16 @@ export default function AgentDashboard() {
                       <h3 className="text-2xl font-bold text-slate-900">
                         {editingScholarshipId ? "Edit Scholarship" : "Post New Scholarship"}
                       </h3>
-                      <p className="text-slate-600 mt-1">All scholarships posted here are automatically tied to {user.country?.name || "your assigned country"}.</p>
+                      <p className="text-slate-600 mt-1">
+                        All scholarships posted here are automatically tied to {user.country?.name || "your assigned country"}.
+                      </p>
                     </div>
 
                     {editingScholarshipId && (
                       <button
                         type="button"
                         onClick={resetScholarshipForm}
-                        className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50"
+                        className="w-full sm:w-fit px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50"
                       >
                         Cancel edit
                       </button>
@@ -800,7 +857,12 @@ export default function AgentDashboard() {
                         <label className="block text-sm font-semibold text-slate-900 mb-2">Listing Status</label>
                         <select
                           value={scholarshipForm.status}
-                          onChange={(e) => setScholarshipForm({ ...scholarshipForm, status: e.target.value as ScholarshipPayload["status"] })}
+                          onChange={(e) =>
+                            setScholarshipForm({
+                              ...scholarshipForm,
+                              status: e.target.value as ScholarshipPayload["status"]
+                            })
+                          }
                           className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="active">Active</option>
@@ -814,7 +876,9 @@ export default function AgentDashboard() {
                         <ListChecks size={18} className="text-blue-600" />
                         <h4 className="text-lg font-bold text-slate-900">Required Documents</h4>
                       </div>
-                      <p className="text-sm text-slate-500 mb-4">Add the exact documents students must upload. This list will appear directly on the student application form.</p>
+                      <p className="text-sm text-slate-500 mb-4">
+                        Add the exact documents students must upload. This list will appear directly on the student application form.
+                      </p>
 
                       <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3">
                         <input
@@ -840,9 +904,16 @@ export default function AgentDashboard() {
 
                       <div className="flex flex-wrap gap-2 mt-4">
                         {scholarshipForm.required_documents.map((item) => (
-                          <span key={item} className="inline-flex items-center gap-2 rounded-full bg-white border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                          <span
+                            key={item}
+                            className="inline-flex items-center gap-2 rounded-full bg-white border border-slate-200 px-3 py-2 text-sm text-slate-700"
+                          >
                             {item}
-                            <button type="button" onClick={() => removeRequiredDocument(item)} className="text-slate-400 hover:text-red-500">
+                            <button
+                              type="button"
+                              onClick={() => removeRequiredDocument(item)}
+                              className="text-slate-400 hover:text-red-500"
+                            >
                               <X size={14} />
                             </button>
                           </span>
@@ -895,7 +966,12 @@ export default function AgentDashboard() {
                         <label className="block text-sm font-semibold text-slate-900 mb-2">Application Instructions</label>
                         <textarea
                           value={scholarshipForm.application_instructions}
-                          onChange={(e) => setScholarshipForm({ ...scholarshipForm, application_instructions: e.target.value })}
+                          onChange={(e) =>
+                            setScholarshipForm({
+                              ...scholarshipForm,
+                              application_instructions: e.target.value
+                            })
+                          }
                           placeholder="Any extra instructions students should follow before applying"
                           className="w-full min-h-[120px] px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
@@ -923,10 +999,16 @@ export default function AgentDashboard() {
                   ) : (
                     scholarships.map((scholarship) => (
                       <article key={scholarship.id} className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                           <div>
                             <div className="flex flex-wrap items-center gap-2 mb-3">
-                              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${scholarship.status === "active" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-700"}`}>
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                  scholarship.status === "active"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-slate-100 text-slate-700"
+                                }`}
+                              >
                                 {scholarship.status}
                               </span>
                               <span className="rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-xs font-semibold">
@@ -937,14 +1019,16 @@ export default function AgentDashboard() {
                               </span>
                             </div>
                             <h4 className="text-xl font-bold text-slate-900">{scholarship.title}</h4>
-                            <p className="text-slate-600 mt-1">{scholarship.university_name} · {scholarship.country?.name}</p>
+                            <p className="text-slate-600 mt-1">
+                              {scholarship.university_name} · {scholarship.country?.name}
+                            </p>
                             <p className="text-slate-600 mt-4 leading-7">{scholarship.description}</p>
                           </div>
 
                           <button
                             type="button"
                             onClick={() => startEditScholarship(scholarship)}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50"
+                            className="w-full sm:w-fit inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50"
                           >
                             <PencilLine size={16} /> Edit
                           </button>
@@ -953,7 +1037,10 @@ export default function AgentDashboard() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 text-sm">
                           <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
                             <p className="text-slate-500">Funding</p>
-                            <p className="mt-1 font-semibold text-slate-900">{scholarship.funding_type}{scholarship.amount ? ` · ${scholarship.amount}` : ""}</p>
+                            <p className="mt-1 font-semibold text-slate-900">
+                              {scholarship.funding_type}
+                              {scholarship.amount ? ` · ${scholarship.amount}` : ""}
+                            </p>
                           </div>
                           <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
                             <p className="text-slate-500">Intake</p>
@@ -1001,7 +1088,7 @@ export default function AgentDashboard() {
 
                     return (
                       <article key={application.id} className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                           <div>
                             <div className="flex flex-wrap items-center gap-2 mb-3">
                               <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium ${meta.className}`}>
@@ -1012,19 +1099,21 @@ export default function AgentDashboard() {
                               </span>
                             </div>
                             <h4 className="text-xl font-bold text-slate-900">{application.student?.name}</h4>
-                            <p className="text-slate-600 mt-1">{application.student?.email}</p>
+                            <p className="text-slate-600 mt-1 break-all">{application.student?.email}</p>
                             <p className="text-slate-600 mt-1">
-                              {application.scholarship?.title} · {application.scholarship?.university_name} · {application.scholarship?.country?.name}
+                              {application.scholarship?.title} · {application.scholarship?.university_name} ·{" "}
+                              {application.scholarship?.country?.name}
                             </p>
                             <p className="text-sm text-slate-500 mt-2">
-                              Phone: {application.student?.student_profile?.phone || "N/A"} · Address: {application.student?.student_profile?.address || "N/A"}
+                              Phone: {application.student?.student_profile?.phone || "N/A"} · Address:{" "}
+                              {application.student?.student_profile?.address || "N/A"}
                             </p>
                           </div>
 
                           <button
                             type="button"
                             onClick={() => setExpandedApplicationId(isExpanded ? null : application.id)}
-                            className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50"
+                            className="w-full sm:w-fit px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50"
                           >
                             {isExpanded ? "Hide Details" : "Open Details"}
                           </button>
@@ -1044,13 +1133,13 @@ export default function AgentDashboard() {
                               {application.documents.length === 0 ? (
                                 <p className="text-sm text-slate-500">No documents uploaded.</p>
                               ) : (
-                                <div className="flex flex-wrap gap-3">
+                                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
                                   {application.documents.map((document) => (
                                     <button
                                       key={document.id}
                                       type="button"
                                       onClick={() => downloadApplicationDocument(document.id, document.original_name)}
-                                      className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                                     >
                                       <Download size={16} /> {document.original_name}
                                     </button>
@@ -1059,7 +1148,7 @@ export default function AgentDashboard() {
                               )}
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_auto_auto] gap-4 items-start">
+                            <div className="grid grid-cols-1 xl:grid-cols-[220px_minmax(0,1fr)] gap-4 items-start">
                               <div>
                                 <label className="block text-sm font-semibold text-slate-900 mb-2">Application Status</label>
                                 <select
@@ -1085,23 +1174,26 @@ export default function AgentDashboard() {
                                 />
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => handleApplicationUpdate(application.id)}
-                                disabled={savingApplicationId === application.id}
-                                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-60 mt-7"
-                              >
-                                <Save size={16} /> {savingApplicationId === application.id ? "Saving..." : "Save"}
-                              </button>
+                              <div className="flex flex-col sm:flex-row gap-3 xl:col-span-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleApplicationUpdate(application.id)}
+                                  disabled={savingApplicationId === application.id}
+                                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-60"
+                                >
+                                  <Save size={16} /> {savingApplicationId === application.id ? "Saving..." : "Save"}
+                                </button>
 
-                              <button
-                                type="button"
-                                onClick={() => handleSendDeadlineReminder(application.id)}
-                                disabled={sendingDeadlineReminderForId === application.id}
-                                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-amber-500 text-white font-medium hover:bg-amber-600 disabled:opacity-60 mt-7"
-                              >
-                                <Bell size={16} /> {sendingDeadlineReminderForId === application.id ? "Sending..." : "Send Deadline Reminder"}
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendDeadlineReminder(application.id)}
+                                  disabled={sendingDeadlineReminderForId === application.id}
+                                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-amber-500 text-white font-medium hover:bg-amber-600 disabled:opacity-60"
+                                >
+                                  <Bell size={16} />{" "}
+                                  {sendingDeadlineReminderForId === application.id ? "Sending..." : "Send Deadline Reminder"}
+                                </button>
+                              </div>
                             </div>
 
                             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
@@ -1109,7 +1201,9 @@ export default function AgentDashboard() {
                                 <MessageSquare className="text-blue-600" size={18} />
                                 <h4 className="text-lg font-bold text-slate-900">Message Thread</h4>
                               </div>
-                              <p className="text-sm text-slate-500 mb-4">Use this thread to answer questions, request missing documents, or guide the student step by step.</p>
+                              <p className="text-sm text-slate-500 mb-4">
+                                Use this thread to answer questions, request missing documents, or guide the student step by step.
+                              </p>
 
                               <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
                                 {application.messages.length === 0 ? (
@@ -1123,18 +1217,24 @@ export default function AgentDashboard() {
                                 )}
                               </div>
 
-                              <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3">
+                              <div className="mt-4 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] gap-3">
                                 <textarea
                                   value={messageDrafts[application.id] || ""}
-                                  onChange={(e) => setMessageDrafts((prev) => ({ ...prev, [application.id]: e.target.value }))}
-                                  placeholder={draft.status === "needs_documents" ? "Tell the student exactly which documents are missing" : "Write a message to the student"}
+                                  onChange={(e) =>
+                                    setMessageDrafts((prev) => ({ ...prev, [application.id]: e.target.value }))
+                                  }
+                                  placeholder={
+                                    draft.status === "needs_documents"
+                                      ? "Tell the student exactly which documents are missing"
+                                      : "Write a message to the student"
+                                  }
                                   className="min-h-[110px] px-4 py-3 rounded-2xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                                 <button
                                   type="button"
                                   onClick={() => handleSendMessage(application.id)}
                                   disabled={sendingMessageForId === application.id}
-                                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-60"
+                                  className="w-full lg:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-60"
                                 >
                                   <Send size={16} /> {sendingMessageForId === application.id ? "Sending..." : "Send Message"}
                                 </button>
