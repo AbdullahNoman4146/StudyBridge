@@ -13,6 +13,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    Route::post('/admin/countries', [AuthController::class, 'createCountry']);
+
     Route::post('/admin/agents', [AuthController::class, 'createAgent']);
     Route::get('/admin/summary', [AuthController::class, 'adminSummary']);
     Route::get('/admin/students', [AuthController::class, 'listStudents']);

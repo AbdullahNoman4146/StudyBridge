@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import CenteredLoader from "../components/CenteredLoader";
+import { Link } from "react-router-dom";
 import {
   getCurrentUser,
-  getStudentsList,
-  updateStudentStatus,
-  deleteStudent,
+  getAgentsList,
+  deleteAgent,
   logout,
 } from "../api/auth";
 import { clearAuthSession } from "../helpers/authStorage";
@@ -23,48 +22,45 @@ import {
   X,
 } from "lucide-react";
 
-type StudentStatus = "active" | "inactive";
-
-interface StudentProfile {
-  phone?: string | null;
-  address?: string | null;
+interface AgentCountry {
+  id?: number;
+  name?: string;
 }
 
-interface Student {
+interface Agent {
   id: number;
   name: string;
   email: string;
-  status: StudentStatus;
-  student_profile?: StudentProfile | null;
+  status: string;
+  country?: AgentCountry | null;
 }
 
-export default function AdminStudentsPage() {
+export default function AdminAgentsPage() {
   const [user, setUser] = useState<any>(null);
-  const [students, setStudents] = useState<Student[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [statusLoadingId, setStatusLoadingId] = useState<number | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<number | null>(null);
 
   useEffect(() => {
-    loadStudentsPage();
+    loadAgentsPage();
   }, []);
 
-  const sortStudentsAscending = (studentList: Student[]) => {
-    return [...studentList].sort((a, b) => a.id - b.id);
+  const sortAgentsAscending = (agentList: Agent[]) => {
+    return [...agentList].sort((a, b) => a.id - b.id);
   };
 
-  const loadStudentsPage = async () => {
+  const loadAgentsPage = async () => {
     setLoading(true);
 
     try {
-      const [userData, studentsData] = await Promise.all([
+      const [userData, agentsData] = await Promise.all([
         getCurrentUser(),
-        getStudentsList(),
+        getAgentsList(),
       ]);
 
       setUser(userData);
-      setStudents(sortStudentsAscending(studentsData));
+      setAgents(sortAgentsAscending(agentsData));
     } catch (error) {
       console.error(error);
     } finally {
@@ -72,47 +68,19 @@ export default function AdminStudentsPage() {
     }
   };
 
-  const handleToggleStudentStatus = async (student: Student) => {
-    const nextStatus: StudentStatus =
-      student.status === "active" ? "inactive" : "active";
-
-    const actionLabel = nextStatus === "active" ? "activate" : "inactivate";
-    const confirmed = window.confirm(
-      `Are you sure you want to ${actionLabel} ${student.name}?`
-    );
-
-    if (!confirmed) return;
-
-    setStatusLoadingId(student.id);
-
-    try {
-      const data = await updateStudentStatus(student.id, nextStatus);
-
-      setStudents((prev) =>
-        sortStudentsAscending(
-          prev.map((item) => (item.id === student.id ? data.student : item))
-        )
-      );
-    } catch (error: any) {
-      alert(error.message || "Failed to update student status");
-    } finally {
-      setStatusLoadingId(null);
-    }
-  };
-
-  const handleDeleteStudent = async (id: number) => {
-    const confirmed = window.confirm("Are you sure you want to remove this student?");
+  const handleDeleteAgent = async (id: number, name: string) => {
+    const confirmed = window.confirm(`Are you sure you want to remove ${name}?`);
     if (!confirmed) return;
 
     setDeleteLoadingId(id);
 
     try {
-      await deleteStudent(id);
-      setStudents((prev) =>
-        sortStudentsAscending(prev.filter((student) => student.id !== id))
+      await deleteAgent(id);
+      setAgents((prev) =>
+        sortAgentsAscending(prev.filter((agent) => agent.id !== id))
       );
     } catch (error: any) {
-      alert(error.message || "Failed to remove student");
+      alert(error.message || "Failed to remove agent");
     } finally {
       setDeleteLoadingId(null);
     }
@@ -129,10 +97,10 @@ export default function AdminStudentsPage() {
     }
   };
 
- if (loading) {
+  if (loading) {
   return (
     <CenteredLoader
-      text="Loading students..."
+      text="Loading agents..."
       containerClassName="min-h-[calc(100vh-72px)]"
     />
   );
@@ -166,7 +134,7 @@ export default function AdminStudentsPage() {
                 Admin workspace
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Manage students and operations
+                Manage agents and operations
               </p>
             </div>
 
@@ -192,7 +160,7 @@ export default function AdminStudentsPage() {
             <Link
               to="/admin/students"
               onClick={() => setIsSidebarOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 text-white bg-blue-600 rounded-xl"
+              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
             >
               <Users size={20} />
               Students
@@ -201,14 +169,13 @@ export default function AdminStudentsPage() {
             <Link
               to="/admin/agents"
               onClick={() => setIsSidebarOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
+              className="flex items-center gap-3 px-4 py-3 text-white bg-blue-600 rounded-xl"
             >
               <UserCheck size={20} />
               Agents
             </Link>
 
-
-            <Link
+           <Link
                to="/admin/countries"
                onClick={() => setIsSidebarOpen(false)}
                className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
@@ -250,10 +217,10 @@ export default function AdminStudentsPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
             <div className="min-w-0">
               <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 break-words">
-                Students
+                Agents
               </h2>
               <p className="text-gray-600 mt-1 break-words">
-                Manage all registered students from this page
+                Manage all registered agents from this page
               </p>
             </div>
 
@@ -273,10 +240,10 @@ export default function AdminStudentsPage() {
 
           <div className="bg-white rounded-2xl shadow-md p-4 sm:p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-800">Students List</h3>
+              <h3 className="text-xl font-bold text-gray-800">Agents List</h3>
 
               <button
-                onClick={loadStudentsPage}
+                onClick={loadAgentsPage}
                 className="w-full sm:w-auto text-sm px-4 py-2 bg-gray-100 rounded-xl hover:bg-gray-200"
               >
                 Refresh
@@ -284,73 +251,50 @@ export default function AdminStudentsPage() {
             </div>
 
             <div className="mb-4 text-sm text-gray-500">
-              Total students:{" "}
-              <span className="font-semibold text-gray-800">{students.length}</span>
+              Total agents:{" "}
+              <span className="font-semibold text-gray-800">{agents.length}</span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="min-w-full border border-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="text-left px-4 py-3 border-b">Student No.</th>
+                    <th className="text-left px-4 py-3 border-b">ID</th>
                     <th className="text-left px-4 py-3 border-b">Name</th>
                     <th className="text-left px-4 py-3 border-b">Email</th>
-                    <th className="text-left px-4 py-3 border-b">Phone</th>
-                    <th className="text-left px-4 py-3 border-b">Address</th>
+                    <th className="text-left px-4 py-3 border-b">Assigned Country</th>
                     <th className="text-left px-4 py-3 border-b">Status</th>
                     <th className="text-left px-4 py-3 border-b">Action</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {students.length === 0 ? (
+                  {agents.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
-                        No students found
+                      <td colSpan={6} className="px-4 py-4 text-center text-gray-500">
+                        No agents found
                       </td>
                     </tr>
                   ) : (
-                    students.map((student, index) => {
-                      const isUpdatingStatus = statusLoadingId === student.id;
-                      const isRemovingStudent = deleteLoadingId === student.id;
-                      const isBusy = isUpdatingStatus || isRemovingStudent;
-                      const isActive = student.status === "active";
+                    agents.map((agent) => {
+                      const isRemoving = deleteLoadingId === agent.id;
 
                       return (
-                        <tr key={student.id} className="hover:bg-gray-50 align-top">
-                          <td className="px-4 py-3 border-b">{index + 1}</td>
-                          <td className="px-4 py-3 border-b break-words">{student.name}</td>
-                          <td className="px-4 py-3 border-b break-all">{student.email}</td>
+                        <tr key={agent.id} className="hover:bg-gray-50 align-top">
+                          <td className="px-4 py-3 border-b">{agent.id}</td>
+                          <td className="px-4 py-3 border-b break-words">{agent.name}</td>
+                          <td className="px-4 py-3 border-b break-all">{agent.email}</td>
                           <td className="px-4 py-3 border-b break-words">
-                            {student.student_profile?.phone || "-"}
+                            {agent.country?.name || "-"}
                           </td>
-                          <td className="px-4 py-3 border-b break-words">
-                            {student.student_profile?.address || "-"}
-                          </td>
+                          <td className="px-4 py-3 border-b">{agent.status}</td>
                           <td className="px-4 py-3 border-b">
                             <button
-                              onClick={() => handleToggleStudentStatus(student)}
-                              disabled={isBusy}
-                              className={`inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-                                isActive
-                                  ? "bg-green-100 text-green-700 hover:bg-green-200"
-                                  : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
-                              } disabled:opacity-50`}
-                            >
-                              {isUpdatingStatus ? (
-                                <Loader2 size={16} className="animate-spin" />
-                              ) : (
-                                student.status
-                              )}
-                            </button>
-                          </td>
-                          <td className="px-4 py-3 border-b">
-                            <button
-                              onClick={() => handleDeleteStudent(student.id)}
-                              disabled={isBusy}
+                              onClick={() => handleDeleteAgent(agent.id, agent.name)}
+                              disabled={isRemoving}
                               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 disabled:opacity-50"
                             >
-                              {isRemovingStudent ? (
+                              {isRemoving ? (
                                 <>
                                   <Loader2 size={16} className="animate-spin" />
                                   Removing...

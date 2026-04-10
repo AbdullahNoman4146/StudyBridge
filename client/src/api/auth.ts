@@ -213,3 +213,17 @@ export async function changeAgentPassword(
 
     return handleResponse(res);
 }
+export async function createCountry(name: string) {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`${API}/admin/countries`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name })
+    });
+
+    return handleResponse(res);
+}
