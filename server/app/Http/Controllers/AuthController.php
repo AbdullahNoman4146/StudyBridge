@@ -30,6 +30,23 @@ class AuthController extends Controller
 
         return response()->json($countries);
     }
+    public function createCountry(Request $request)
+    {
+    $this->ensureAdmin();
+
+    $request->validate([
+        'name' => 'required|string|max:100|unique:countries,name',
+    ]);
+
+    $country = Country::create([
+        'name' => trim($request->name),
+    ]);
+
+    return response()->json([
+        'message' => 'Country added successfully',
+        'country' => $country
+    ], 201);
+    }
 
     public function register(Request $request)
     {

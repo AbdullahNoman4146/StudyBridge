@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import CenteredLoader from "../components/CenteredLoader";
 
 import {
   LayoutDashboard,
@@ -451,8 +452,13 @@ export default function AgentDashboard() {
   };
 
   if (loading || !user) {
-    return <p className="p-6">Loading...</p>;
-  }
+  return (
+    <CenteredLoader
+      text="Loading agent dashboard..."
+      containerClassName="min-h-[calc(100vh-88px)]"
+    />
+  );
+}
 
   const mustChangePassword = Boolean(user.must_change_password);
 

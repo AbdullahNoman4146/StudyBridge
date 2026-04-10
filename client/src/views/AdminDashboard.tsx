@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import CenteredLoader from "../components/CenteredLoader";
 import {
   createAgent,
-  deleteAgent,
   getAdminSummary,
   getAgentsList,
   getCountries,
@@ -14,17 +14,15 @@ import { clearAuthSession } from "../helpers/authStorage";
 import {
   LayoutDashboard,
   Users,
-  FileText,
+  UserCheck,
   File,
   Globe,
   Settings,
   TrendingUp,
-  UserCheck,
   Clock,
   FileWarning,
   BarChart3,
   Bell,
-  Trash2,
   Menu,
   X
 } from "lucide-react";
@@ -33,8 +31,6 @@ interface Country {
   id: number;
   name: string;
 }
-
-type ViewMode = "agents" | null;
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -45,8 +41,6 @@ export default function AdminDashboard() {
   });
 
   const [agents, setAgents] = useState<any[]>([]);
-  const [activeView, setActiveView] = useState<ViewMode>(null);
-  const [listLoading, setListLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [form, setForm] = useState({
@@ -87,32 +81,6 @@ export default function AdminDashboard() {
       setSummary(data);
     } catch (error) {
       console.error(error);
-    }
-  };
-
-  const handleShowAgents = async () => {
-    setActiveView("agents");
-    setListLoading(true);
-    try {
-      const data = await getAgentsList();
-      setAgents(data);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setListLoading(false);
-    }
-  };
-
-  const handleDeleteAgent = async (id: number) => {
-    const confirmed = window.confirm("Are you sure you want to remove this agent?");
-    if (!confirmed) return;
-
-    try {
-      await deleteAgent(id);
-      setAgents((prev) => prev.filter((item) => item.id !== id));
-      await refreshSummary();
-    } catch (error: any) {
-      alert(error.message || "Failed to remove agent");
     }
   };
 
@@ -163,12 +131,7 @@ export default function AdminDashboard() {
       });
 
       setAgents((prev) => [data.agent, ...prev.filter((item) => item.id !== data.agent.id)]);
-
       await refreshSummary();
-
-      if (activeView === "agents") {
-        await handleShowAgents();
-      }
     } catch (err: any) {
       setFormError(err.message || "Failed to create agent");
     } finally {
@@ -176,7 +139,14 @@ export default function AdminDashboard() {
     }
   };
 
-  if (!user) return <p className="p-6">Loading...</p>;
+  if (!user) {
+    return (
+      <CenteredLoader
+        text="Loading admin dashboard..."
+        containerClassName="min-h-[calc(100vh-72px)]"
+      />
+    );
+  }
 
   const assignedCountryMap = new Map<number, string>();
   agents.forEach((agent) => {
@@ -271,26 +241,22 @@ export default function AdminDashboard() {
               <Users size={20} /> Students
             </Link>
 
-            <a
-              href="/applications"
+            <Link
+              to="/admin/agents"
+              onClick={() => setIsSidebarOpen(false)}
               className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
             >
-              <FileText size={20} /> Applications
-            </a>
+              <UserCheck size={20} /> Agents
+            </Link>
 
-            <a
-              href="/documents"
-              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
-            >
-              <File size={20} /> Documents
-            </a>
 
-            <a
-              href="/countries-visa"
-              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
+            <Link
+               to="/admin/countries"
+               onClick={() => setIsSidebarOpen(false)}
+               className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
             >
-              <Globe size={20} /> Countries & Visa
-            </a>
+                       <Globe size={20} /> Countries
+            </Link>
 
             <a
               href="/settings"
@@ -352,18 +318,14 @@ export default function AdminDashboard() {
               <p className="text-3xl font-bold">{summary.students_count}</p>
             </div>
 
-            <button
-              onClick={handleShowAgents}
-              className="bg-white rounded-2xl shadow-md p-6 text-left hover:shadow-lg transition"
-            >
+            <div className="bg-white rounded-2xl shadow-md p-6">
               <div className="flex justify-between mb-4">
                 <UserCheck className="text-green-600" size={24} />
                 <TrendingUp className="text-green-500" size={20} />
               </div>
               <p className="text-gray-500 text-sm">Total Agents</p>
               <p className="text-3xl font-bold">{summary.agents_count}</p>
-              <p className="text-xs text-blue-600 mt-2">Click to view list</p>
-            </button>
+            </div>
 
             <div className="bg-white rounded-2xl shadow-md p-6">
               <div className="flex justify-between mb-4">
@@ -463,110 +425,7 @@ export default function AdminDashboard() {
             </form>
           </div>
 
-          {activeView === "agents" && (
-            <div className="bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8">
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-800">Agents List</h3>
-
-                <button
-                  onClick={() => setActiveView(null)}
-                  className="w-full sm:w-auto text-sm px-4 py-2 bg-gray-100 rounded-xl hover:bg-gray-200"
-                >
-                  Close
-                </button>
-              </div>
-
-              {listLoading ? (
-                <p className="text-gray-500">Loading list...</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border border-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="text-left px-4 py-3 border-b">ID</th>
-                        <th className="text-left px-4 py-3 border-b">Name</th>
-                        <th className="text-left px-4 py-3 border-b">Email</th>
-                        <th className="text-left px-4 py-3 border-b">Assigned Country</th>
-                        <th className="text-left px-4 py-3 border-b">Status</th>
-                        <th className="text-left px-4 py-3 border-b">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {agents.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="px-4 py-4 text-center text-gray-500">
-                            No agents found
-                          </td>
-                        </tr>
-                      ) : (
-                        agents.map((agent) => (
-                          <tr key={agent.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 border-b">{agent.id}</td>
-                            <td className="px-4 py-3 border-b break-words">{agent.name}</td>
-                            <td className="px-4 py-3 border-b break-all">{agent.email}</td>
-                            <td className="px-4 py-3 border-b break-words">{agent.country?.name || "-"}</td>
-                            <td className="px-4 py-3 border-b">{agent.status}</td>
-                            <td className="px-4 py-3 border-b">
-                              <button
-                                onClick={() => handleDeleteAgent(agent.id)}
-                                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
-                              >
-                                <Trash2 size={16} />
-                                Remove
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2 bg-white rounded-2xl shadow-md p-4 sm:p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <BarChart3 className="text-blue-600" size={24} />
-                <h3 className="text-xl font-bold">Application Trends</h3>
-              </div>
-
-              <div className="space-y-4">
-                {chartData.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-4">
-                    <span className="w-10 shrink-0">{item.month}</span>
-
-                    <div className="flex-1 bg-gray-100 rounded-full h-8 overflow-hidden">
-                      <div
-                        className="bg-blue-600 h-8 rounded-full flex items-center justify-end pr-3"
-                        style={{ width: `${item.value}%` }}
-                      >
-                        <span className="text-white text-xs">{item.label}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-md p-4 sm:p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <Bell className="text-blue-600" size={24} />
-                <h3 className="text-xl font-bold">Alerts</h3>
-              </div>
-
-              <div className="space-y-4">
-                {alerts.map((alert, idx) => (
-                  <div key={idx} className="border-l-4 pl-4 py-2 border-gray-200">
-                    <p className="text-sm font-semibold break-words">{alert.title}</p>
-                    <p className="text-xs text-gray-600 break-words">{alert.desc}</p>
-                    <p className="text-xs text-gray-400">{alert.time}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          
         </div>
       </main>
     </div>

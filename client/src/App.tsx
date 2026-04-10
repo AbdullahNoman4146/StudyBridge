@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import type { ReactNode } from "react";
-
+import CenteredLoader from "./components/CenteredLoader";
 import AboutPage from "./views/AboutPage";
 import LandingPage from "./views/LandingPage";
 import Login from "./views/Login";
@@ -13,6 +13,8 @@ import StudentDashboard from "./views/StudentDashboard";
 import MainLayout from "./layouts/MainLayout";
 import { getCurrentUser } from "./api/auth";
 import { clearAuthSession } from "./helpers/authStorage";
+import AdminAgentsPage from "./views/AdminAgentsPage";
+import AdminCountriesPage from "./views/AdminCountriesPage";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -57,8 +59,8 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
     checkAuth();
   }, [allowedRoles]);
 
-  if (isLoading) {
-    return <div style={{ textAlign: "center", padding: "50px" }}>Loading...</div>;
+if (isLoading) {
+    return <CenteredLoader text="Checking authentication..." />;
   }
 
   if (!isAuthenticated) {
@@ -106,6 +108,15 @@ export default function App() {
         />
 
         <Route
+          path="/admin/agents"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminAgentsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/agent-dashboard"
           element={
             <ProtectedRoute allowedRoles={["agent"]}>
@@ -113,6 +124,14 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/countries"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+            <AdminCountriesPage />
+            </ProtectedRoute>
+                  }
+          />
 
         <Route
           path="/student-dashboard"

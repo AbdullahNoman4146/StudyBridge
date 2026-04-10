@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import CenteredLoader from "../components/CenteredLoader";
 import {
   Search,
   BookOpen,
@@ -698,9 +699,14 @@ export default function StudentDashboard() {
     });
   };
 
-  if (loading) {
-    return <div className="p-8 text-center">Loading student dashboard...</div>;
-  }
+ if (loading) {
+  return (
+    <CenteredLoader
+      text="Loading student dashboard..."
+      containerClassName="min-h-[calc(100vh-88px)]"
+    />
+  );
+}
 
   return (
     <div className="min-h-[calc(100vh-88px)] bg-slate-100 relative">
