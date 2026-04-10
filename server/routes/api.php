@@ -16,6 +16,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/admin/agents', [AuthController::class, 'createAgent']);
     Route::get('/admin/summary', [AuthController::class, 'adminSummary']);
     Route::get('/admin/students', [AuthController::class, 'listStudents']);
+    Route::patch('/admin/students/{id}/status', [AuthController::class, 'updateStudentStatus']);
     Route::get('/admin/agents', [AuthController::class, 'listAgents']);
     Route::delete('/admin/students/{id}', [AuthController::class, 'deleteStudent']);
     Route::delete('/admin/agents/{id}', [AuthController::class, 'deleteAgent']);

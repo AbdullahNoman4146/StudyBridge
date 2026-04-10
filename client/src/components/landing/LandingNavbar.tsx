@@ -134,7 +134,7 @@ export default function LandingNavbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/92 backdrop-blur-xl supports-[backdrop-filter]:bg-white/80">
-      <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-0sm:px-6 lg:px-8">
         <Link to="/" className="flex min-w-0 items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 shadow-sm ring-1 ring-blue-100">
             <GraduationCap className="h-6 w-6 text-blue-600" strokeWidth={2.2} />

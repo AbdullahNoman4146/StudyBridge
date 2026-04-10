@@ -189,6 +189,33 @@ class AuthController extends Controller
         return response()->json($agents);
     }
 
+    public function updateStudentStatus(Request $request, $id)
+    {
+        $this->ensureAdmin();
+
+        $request->validate([
+            'status' => 'required|in:active,inactive',
+        ]);
+
+        $student = User::with('studentProfile')
+            ->where('role', 'student')
+            ->find($id);
+
+        if (!$student) {
+            return response()->json([
+                'message' => 'Student not found'
+            ], 404);
+        }
+
+        $student->status = $request->status;
+        $student->save();
+
+        return response()->json([
+            'message' => 'Student status updated successfully',
+            'student' => $student->fresh('studentProfile')
+        ]);
+    }
+
     public function deleteStudent($id)
     {
         $this->ensureAdmin();
@@ -258,11 +285,9 @@ class AuthController extends Controller
         $user->must_change_password = false;
         $user->save();
 
-        $freshUser = User::with('country')->find($user->id);
-
         return response()->json([
             'message' => 'Password changed successfully',
-            'user' => $freshUser
+            'must_change_password' => false
         ]);
     }
 
@@ -271,7 +296,7 @@ class AuthController extends Controller
         auth('api')->logout();
 
         return response()->json([
-            'message' => 'Successfully logged out'
+            'message' => 'Logged out successfully'
         ]);
     }
 }
