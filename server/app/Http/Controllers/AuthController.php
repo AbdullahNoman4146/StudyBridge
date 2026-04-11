@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Country;
 use App\Models\StudentProfile;
+use App\Models\ScholarshipApplication;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
@@ -30,22 +32,23 @@ class AuthController extends Controller
 
         return response()->json($countries);
     }
+
     public function createCountry(Request $request)
     {
-    $this->ensureAdmin();
+        $this->ensureAdmin();
 
-    $request->validate([
-        'name' => 'required|string|max:100|unique:countries,name',
-    ]);
+        $request->validate([
+            'name' => 'required|string|max:100|unique:countries,name',
+        ]);
 
-    $country = Country::create([
-        'name' => trim($request->name),
-    ]);
+        $country = Country::create([
+            'name' => trim($request->name),
+        ]);
 
-    return response()->json([
-        'message' => 'Country added successfully',
-        'country' => $country
-    ], 201);
+        return response()->json([
+            'message' => 'Country added successfully',
+            'country' => $country
+        ], 201);
     }
 
     public function register(Request $request)
@@ -176,9 +179,98 @@ class AuthController extends Controller
     {
         $this->ensureAdmin();
 
+        $statusMap = [
+            'submitted' => 'Submitted',
+            'under_review' => 'Under Review',
+            'needs_documents' => 'Needs Documents',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+        ];
+
+        $agents = User::with('country:id,name')
+            ->where('role', 'agent')
+            ->orderBy('name')
+            ->get(['id', 'name', 'country_id']);
+
+        $groupedCounts = ScholarshipApplication::query()
+            ->select('agent_id', 'status', DB::raw('COUNT(*) as total'))
+            ->groupBy('agent_id', 'status')
+            ->get();
+
+        $overviewCounts = array_fill_keys(array_keys($statusMap), 0);
+        $countsByAgent = [];
+
+        foreach ($agents as $agent) {
+            $countsByAgent[$agent->id] = [
+                'agent' => $agent,
+                'status_counts' => array_fill_keys(array_keys($statusMap), 0),
+                'total' => 0,
+            ];
+        }
+
+        foreach ($groupedCounts as $row) {
+            $agentId = (int) $row->agent_id;
+            $status = (string) $row->status;
+            $total = (int) $row->total;
+
+            if (!array_key_exists($status, $overviewCounts)) {
+                continue;
+            }
+
+            $overviewCounts[$status] += $total;
+
+            if (isset($countsByAgent[$agentId])) {
+                $countsByAgent[$agentId]['status_counts'][$status] = $total;
+                $countsByAgent[$agentId]['total'] += $total;
+            }
+        }
+
+        $agentChartData = collect($countsByAgent)
+            ->map(function ($entry) use ($statusMap) {
+                return [
+                    'agent_id' => $entry['agent']->id,
+                    'agent_name' => $entry['agent']->name,
+                    'country_name' => optional($entry['agent']->country)->name,
+                    'total_applications' => (int) $entry['total'],
+                    'statuses' => collect($statusMap)
+                        ->map(function ($label, $key) use ($entry) {
+                            return [
+                                'key' => $key,
+                                'label' => $label,
+                                'count' => (int) $entry['status_counts'][$key],
+                            ];
+                        })
+                        ->values()
+                        ->all(),
+                ];
+            })
+            ->sortByDesc('total_applications')
+            ->values()
+            ->all();
+
+        $applicationStatusOverview = collect($statusMap)
+            ->map(function ($label, $key) use ($overviewCounts) {
+                return [
+                    'key' => $key,
+                    'label' => $label,
+                    'count' => (int) $overviewCounts[$key],
+                ];
+            })
+            ->values()
+            ->all();
+
+        $totalApplications = array_sum($overviewCounts);
+        $agentsWithApplications = collect($agentChartData)
+            ->filter(fn ($item) => (int) $item['total_applications'] > 0)
+            ->count();
+
         return response()->json([
             'students_count' => User::where('role', 'student')->count(),
             'agents_count' => User::where('role', 'agent')->count(),
+            'total_applications' => $totalApplications,
+            'agents_with_applications' => $agentsWithApplications,
+            'application_status_overview' => $applicationStatusOverview,
+            'agent_application_status_chart' => $agentChartData,
         ]);
     }
 
