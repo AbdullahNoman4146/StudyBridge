@@ -36,6 +36,8 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     nodejs \
     npm \
+    ca-certificates \
+    openssl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

@@ -369,15 +369,24 @@ class ScholarshipApplicationController extends Controller
 
         $responseMessage = 'Application updated successfully';
 
-        if ($request->status === 'needs_documents' && $previousStatus !== 'needs_documents') {
-            try {
-                $reminderService->sendNeedsDocumentsReminder($application, 'needs_documents_status_change', Carbon::today(), true);
-                $responseMessage = 'Application updated successfully and needs-documents reminder email sent.';
-            } catch (\Throwable $exception) {
-                report($exception);
-                $responseMessage = 'Application updated successfully, but the reminder email could not be sent. Please check mail settings.';
-            }
-        }
+        try {
+    $reminderService->sendNeedsDocumentsReminder($application, 'manual_deadline_reminder', Carbon::today(), true);
+} catch (\Throwable $exception) {
+    \Log::error('Reminder email failed', [
+        'error' => $exception->getMessage(),
+        'mailer' => config('mail.default'),
+        'host' => config('mail.mailers.smtp.host'),
+        'port' => config('mail.mailers.smtp.port'),
+        'encryption' => config('mail.mailers.smtp.encryption'),
+        'username' => config('mail.mailers.smtp.username'),
+        'from_address' => config('mail.from.address'),
+    ]);
+
+    return response()->json([
+        'message' => 'The reminder email could not be sent.',
+        'error' => $exception->getMessage(),
+    ], 500);
+}
 
         return response()->json([
             'message' => $responseMessage,
