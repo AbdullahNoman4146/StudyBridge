@@ -18,10 +18,10 @@ import {
   Globe,
   Settings,
   TrendingUp,
-  Clock,
-  FileWarning,
   Menu,
-  X
+  X,
+  FileText,
+  BarChart3
 } from "lucide-react";
 
 interface Country {
@@ -29,12 +29,85 @@ interface Country {
   name: string;
 }
 
+type ApplicationStatusKey =
+  | "submitted"
+  | "under_review"
+  | "needs_documents"
+  | "approved"
+  | "rejected";
+
+interface StatusItem {
+  key: ApplicationStatusKey;
+  label: string;
+  count: number;
+}
+
+interface AgentApplicationChartRow {
+  agent_id: number;
+  agent_name: string;
+  country_name: string | null;
+  total_applications: number;
+  statuses: StatusItem[];
+}
+
+interface AdminSummary {
+  students_count: number;
+  agents_count: number;
+  total_applications: number;
+  agents_with_applications: number;
+  application_status_overview: StatusItem[];
+  agent_application_status_chart: AgentApplicationChartRow[];
+}
+
+const STATUS_COLOR_CLASSES: Record<ApplicationStatusKey, string> = {
+  submitted: "bg-blue-500",
+  under_review: "bg-amber-500",
+  needs_documents: "bg-violet-500",
+  approved: "bg-emerald-500",
+  rejected: "bg-rose-500"
+};
+
+function StackedStatusBar({
+  statuses,
+  total,
+  heightClass = "h-4"
+}: {
+  statuses: StatusItem[];
+  total: number;
+  heightClass?: string;
+}) {
+  if (total <= 0) {
+    return <div className={`${heightClass} w-full rounded-full bg-gray-100`} />;
+  }
+
+  return (
+    <div className={`${heightClass} w-full rounded-full bg-gray-100 overflow-hidden flex`}>
+      {statuses.map((status) => {
+        if (status.count <= 0) return null;
+
+        return (
+          <div
+            key={status.key}
+            className={`${STATUS_COLOR_CLASSES[status.key]} h-full`}
+            style={{ width: `${(status.count / total) * 100}%` }}
+            title={`${status.label}: ${status.count}`}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
   const [countries, setCountries] = useState<Country[]>([]);
-  const [summary, setSummary] = useState({
+  const [summary, setSummary] = useState<AdminSummary>({
     students_count: 0,
-    agents_count: 0
+    agents_count: 0,
+    total_applications: 0,
+    agents_with_applications: 0,
+    application_status_overview: [],
+    agent_application_status_chart: []
   });
 
   const [agents, setAgents] = useState<any[]>([]);
@@ -214,23 +287,22 @@ export default function AdminDashboard() {
               <UserCheck size={20} /> Agents
             </Link>
 
-
             <Link
-               to="/admin/countries"
-               onClick={() => setIsSidebarOpen(false)}
-               className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
+              to="/admin/countries"
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
             >
-                       <Globe size={20} /> Countries
+              <Globe size={20} /> Countries
             </Link>
 
-           <Link
-  to="/admin/settings"
-  onClick={() => setIsSidebarOpen(false)}
-  className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
->
-  <Settings size={20} />
-  Settings
-</Link>
+            <Link
+              to="/admin/settings"
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-xl"
+            >
+              <Settings size={20} />
+              Settings
+            </Link>
 
             <button
               onClick={handleLogout}
@@ -296,19 +368,136 @@ export default function AdminDashboard() {
 
             <div className="bg-white rounded-2xl shadow-md p-6">
               <div className="flex justify-between mb-4">
-                <Clock className="text-yellow-600" size={24} />
+                <FileText className="text-violet-600" size={24} />
+                <TrendingUp className="text-green-500" size={20} />
               </div>
-              <p className="text-gray-500 text-sm">Pending Visas</p>
-              <p className="text-3xl font-bold">156</p>
+              <p className="text-gray-500 text-sm">Total Applications</p>
+              <p className="text-3xl font-bold">{summary.total_applications}</p>
             </div>
 
             <div className="bg-white rounded-2xl shadow-md p-6">
               <div className="flex justify-between mb-4">
-                <FileWarning className="text-red-600" size={24} />
+                <BarChart3 className="text-amber-600" size={24} />
               </div>
-              <p className="text-gray-500 text-sm">Urgent Actions</p>
-              <p className="text-3xl font-bold">23</p>
+              <p className="text-gray-500 text-sm">Agents With Applications</p>
+              <p className="text-3xl font-bold">{summary.agents_with_applications}</p>
             </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-5">
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">Overall Application Status</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Platform-wide application distribution across all agents
+                </p>
+              </div>
+
+              <div className="text-sm font-medium text-gray-700">
+                Total: {summary.total_applications}
+              </div>
+            </div>
+
+            {summary.total_applications > 0 ? (
+              <>
+                <StackedStatusBar
+                  statuses={summary.application_status_overview}
+                  total={summary.total_applications}
+                  heightClass="h-5"
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 mt-5">
+                  {summary.application_status_overview.map((status) => (
+                    <div
+                      key={status.key}
+                      className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span
+                          className={`inline-block w-3 h-3 rounded-full ${STATUS_COLOR_CLASSES[status.key]}`}
+                        />
+                        <p className="text-sm text-gray-600">{status.label}</p>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-900">{status.count}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-gray-500">
+                No application data available yet.
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8">
+            <div className="mb-5">
+              <h3 className="text-xl font-bold text-gray-800">Agent-wise Application Status Chart</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                See how many applications each agent currently has in each status
+              </p>
+            </div>
+
+            {summary.agent_application_status_chart.length > 0 ? (
+              <div className="space-y-4">
+                {summary.agent_application_status_chart.map((agentRow) => (
+                  <div
+                    key={agentRow.agent_id}
+                    className="rounded-2xl border border-gray-200 bg-gray-50 p-4"
+                  >
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900">
+                          {agentRow.agent_name}
+                        </h4>
+                        <p className="text-sm text-gray-500">
+                          {agentRow.country_name ? `${agentRow.country_name} agent` : "No country assigned"}
+                        </p>
+                      </div>
+
+                      <div className="text-sm font-medium text-gray-700">
+                        Total Applications: {agentRow.total_applications}
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <StackedStatusBar
+                        statuses={agentRow.statuses}
+                        total={agentRow.total_applications}
+                        heightClass="h-4"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 mt-4">
+                      {agentRow.statuses.map((status) => (
+                        <div
+                          key={`${agentRow.agent_id}-${status.key}`}
+                          className="rounded-xl border border-gray-200 bg-white px-4 py-3"
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span
+                              className={`inline-block w-3 h-3 rounded-full ${STATUS_COLOR_CLASSES[status.key]}`}
+                            />
+                            <p className="text-sm text-gray-600">{status.label}</p>
+                          </div>
+                          <p className="text-xl font-bold text-gray-900">{status.count}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {agentRow.total_applications === 0 && (
+                      <p className="text-sm text-gray-500 mt-4">
+                        This agent has not received any applications yet.
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-gray-500">
+                No agents found yet.
+              </div>
+            )}
           </div>
 
           <div className="bg-white rounded-2xl shadow-md p-4 sm:p-6 mb-8">
@@ -391,8 +580,6 @@ export default function AdminDashboard() {
               </div>
             </form>
           </div>
-
-          
         </div>
       </main>
     </div>
