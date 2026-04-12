@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import CenteredLoader from "../components/CenteredLoader";
 
 import {
@@ -56,6 +57,14 @@ const emptyScholarshipForm: ScholarshipPayload = {
 };
 
 type AgentTab = "overview" | "scholarships" | "applications";
+
+function getValidAgentTab(tab: string | null): AgentTab {
+  if (tab === "scholarships" || tab === "applications") {
+    return tab;
+  }
+
+  return "overview";
+}
 
 function formatDate(date?: string | null) {
   if (!date) return "N/A";
@@ -120,9 +129,8 @@ function ChatMessageBubble({ item, currentUserId }: { item: ApplicationMessageIt
   return (
     <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-          isMine ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-800 border border-slate-200"
-        }`}
+        className={`max-w-[85%] rounded-2xl px-4 py-3 ${isMine ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-800 border border-slate-200"
+          }`}
       >
         <div className="flex items-center gap-2 text-xs mb-1 opacity-90">
           <span className="font-semibold">{item.sender?.name || (isMine ? "You" : "Student")}</span>
@@ -136,9 +144,10 @@ function ChatMessageBubble({ item, currentUserId }: { item: ApplicationMessageIt
 }
 
 export default function AgentDashboard() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<AgentTab>("overview");
+  const [activeTab, setActiveTab] = useState<AgentTab>(() => getValidAgentTab(searchParams.get("tab")));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -205,6 +214,28 @@ export default function AgentDashboard() {
     });
     setApplicationDrafts(drafts);
   }, [applications]);
+
+  useEffect(() => {
+    const nextTab = getValidAgentTab(searchParams.get("tab"));
+
+    if (searchParams.get("tab") !== nextTab) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set("tab", nextTab);
+      setSearchParams(nextParams, { replace: true });
+      return;
+    }
+
+    setActiveTab(nextTab);
+  }, [searchParams, setSearchParams]);
+
+  const handleTabChange = (tab: AgentTab) => {
+    setActiveTab(tab);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("tab", tab);
+    setSearchParams(nextParams);
+    setIsSidebarOpen(false);
+  };
 
   const stats = useMemo(() => {
     const activeScholarships = scholarships.filter((item) => item.status === "active").length;
@@ -337,7 +368,7 @@ export default function AgentDashboard() {
       await refreshData();
       resetScholarshipForm();
       setFormSuccess(response.message);
-      setActiveTab("scholarships");
+      handleTabChange("scholarships");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to save scholarship";
       setFormError(message);
@@ -365,7 +396,7 @@ export default function AgentDashboard() {
     setDocumentInput("");
     setFormError("");
     setFormSuccess("");
-    setActiveTab("scholarships");
+    handleTabChange("scholarships");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -452,13 +483,13 @@ export default function AgentDashboard() {
   };
 
   if (loading || !user) {
-  return (
-    <CenteredLoader
-      text="Loading agent dashboard..."
-      containerClassName="min-h-[calc(100vh-88px)]"
-    />
-  );
-}
+    return (
+      <CenteredLoader
+        text="Loading agent dashboard..."
+        containerClassName="min-h-[calc(100vh-88px)]"
+      />
+    );
+  }
 
   const mustChangePassword = Boolean(user.must_change_password);
 
@@ -496,12 +527,10 @@ export default function AgentDashboard() {
           <nav className="p-4 sm:p-5 space-y-3">
             <button
               onClick={() => {
-                setActiveTab("overview");
-                setIsSidebarOpen(false);
+                handleTabChange("overview");
               }}
-              className={`w-full flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-left transition ${
-                activeTab === "overview" ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"
-              }`}
+              className={`w-full flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-left transition ${activeTab === "overview" ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"
+                }`}
             >
               <LayoutDashboard size={20} />
               <span className="text-base sm:text-lg font-medium">Overview</span>
@@ -509,12 +538,10 @@ export default function AgentDashboard() {
 
             <button
               onClick={() => {
-                setActiveTab("scholarships");
-                setIsSidebarOpen(false);
+                handleTabChange("scholarships");
               }}
-              className={`w-full flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-left transition ${
-                activeTab === "scholarships" ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"
-              }`}
+              className={`w-full flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-left transition ${activeTab === "scholarships" ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"
+                }`}
               disabled={mustChangePassword}
             >
               <BookOpen size={20} />
@@ -523,12 +550,10 @@ export default function AgentDashboard() {
 
             <button
               onClick={() => {
-                setActiveTab("applications");
-                setIsSidebarOpen(false);
+                handleTabChange("applications");
               }}
-              className={`w-full flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-left transition ${
-                activeTab === "applications" ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"
-              }`}
+              className={`w-full flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl text-left transition ${activeTab === "applications" ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"
+                }`}
               disabled={mustChangePassword}
             >
               <FileText size={20} />
@@ -689,7 +714,7 @@ export default function AgentDashboard() {
                   <div className="flex items-center justify-between mb-5">
                     <h3 className="text-xl font-bold text-slate-900">Recent Applications</h3>
                     <button
-                      onClick={() => setActiveTab("applications")}
+                      onClick={() => handleTabChange("applications")}
                       className="text-sm font-medium text-blue-600 hover:text-blue-700"
                     >
                       Open application board
@@ -730,7 +755,7 @@ export default function AgentDashboard() {
                   <div className="flex items-center justify-between mb-5">
                     <h3 className="text-xl font-bold text-slate-900">Posting Quality Tips</h3>
                     <button
-                      onClick={() => setActiveTab("scholarships")}
+                      onClick={() => handleTabChange("scholarships")}
                       className="text-sm font-medium text-blue-600 hover:text-blue-700"
                     >
                       Manage scholarships
@@ -1009,11 +1034,10 @@ export default function AgentDashboard() {
                           <div>
                             <div className="flex flex-wrap items-center gap-2 mb-3">
                               <span
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                  scholarship.status === "active"
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${scholarship.status === "active"
                                     ? "bg-green-100 text-green-700"
                                     : "bg-slate-100 text-slate-700"
-                                }`}
+                                  }`}
                               >
                                 {scholarship.status}
                               </span>
