@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import CenteredLoader from "../components/CenteredLoader";
 import {
   Search,
@@ -42,6 +42,14 @@ import {
 import { clearAuthSession } from "../helpers/authStorage";
 
 type StudentTab = "browse" | "applications" | "interested";
+
+function getValidStudentTab(tab: string | null): StudentTab {
+  if (tab === "applications" || tab === "interested") {
+    return tab;
+  }
+
+  return "browse";
+}
 
 type DashboardUser = {
   id: number;
@@ -128,9 +136,8 @@ function ChatMessageBubble({ item, currentUserId }: { item: ApplicationMessageIt
   return (
     <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[90%] sm:max-w-[85%] rounded-2xl px-4 py-3 ${
-          isMine ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-800 border border-slate-200"
-        }`}
+        className={`max-w-[90%] sm:max-w-[85%] rounded-2xl px-4 py-3 ${isMine ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-800 border border-slate-200"
+          }`}
       >
         <div className="flex items-center gap-2 text-xs mb-1 opacity-90">
           <span className="font-semibold">{item.sender?.name || (isMine ? "You" : "Agent")}</span>
@@ -144,9 +151,10 @@ function ChatMessageBubble({ item, currentUserId }: { item: ApplicationMessageIt
 }
 
 export default function StudentDashboard() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [user, setUser] = useState<DashboardUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<StudentTab>("browse");
+  const [activeTab, setActiveTab] = useState<StudentTab>(() => getValidStudentTab(searchParams.get("tab")));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [countries, setCountries] = useState<CountryOption[]>([]);
   const [allScholarships, setAllScholarships] = useState<Scholarship[]>([]);
@@ -210,6 +218,28 @@ export default function StudentDashboard() {
 
     void loadData();
   }, [navigate]);
+
+  useEffect(() => {
+    const nextTab = getValidStudentTab(searchParams.get("tab"));
+
+    if (searchParams.get("tab") !== nextTab) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set("tab", nextTab);
+      setSearchParams(nextParams, { replace: true });
+      return;
+    }
+
+    setActiveTab(nextTab);
+  }, [searchParams, setSearchParams]);
+
+  const handleTabChange = (tab: StudentTab) => {
+    setActiveTab(tab);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("tab", tab);
+    setSearchParams(nextParams);
+    setIsSidebarOpen(false);
+  };
 
   const appliedScholarshipIds = useMemo(
     () => new Set(applications.map((application) => application.scholarship_id)),
@@ -304,8 +334,7 @@ export default function StudentDashboard() {
   };
 
   const openApplicationDetails = (scholarshipId: number) => {
-    setActiveTab("applications");
-    setIsSidebarOpen(false);
+    handleTabChange("applications");
     const matchingApplication = applications.find((item) => item.scholarship_id === scholarshipId);
     setExpandedApplicationId(matchingApplication?.id || null);
   };
@@ -368,9 +397,8 @@ export default function StudentDashboard() {
         refreshInterestedScholarships(filters),
         refreshAllScholarships()
       ]);
-      setActiveTab("applications");
+      handleTabChange("applications");
       setExpandedApplicationId(response.application.id);
-      setIsSidebarOpen(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to submit application";
       setApplyError(message);
@@ -541,11 +569,10 @@ export default function StudentDashboard() {
                   type="button"
                   onClick={() => handleToggleInterest(scholarship)}
                   disabled={isInterestLoading}
-                  className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-medium border transition ${
-                    scholarship.is_interested
+                  className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl font-medium border transition ${scholarship.is_interested
                       ? "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
                       : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                  } disabled:opacity-60`}
+                    } disabled:opacity-60`}
                 >
                   <Heart size={16} />
                   {isInterestLoading ? "Updating..." : scholarship.is_interested ? "Remove Interested" : "Mark Interested"}
@@ -699,14 +726,14 @@ export default function StudentDashboard() {
     });
   };
 
- if (loading) {
-  return (
-    <CenteredLoader
-      text="Loading student dashboard..."
-      containerClassName="min-h-[calc(100vh-88px)]"
-    />
-  );
-}
+  if (loading) {
+    return (
+      <CenteredLoader
+        text="Loading student dashboard..."
+        containerClassName="min-h-[calc(100vh-88px)]"
+      />
+    );
+  }
 
   return (
     <div className="min-h-[calc(100vh-88px)] bg-slate-100 relative">
@@ -744,12 +771,10 @@ export default function StudentDashboard() {
           <nav className="space-y-2">
             <button
               onClick={() => {
-                setActiveTab("browse");
-                setIsSidebarOpen(false);
+                handleTabChange("browse");
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${
-                activeTab === "browse" ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-50"
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${activeTab === "browse" ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-50"
+                }`}
             >
               <BookOpen size={20} />
               <span className="font-medium">Browse Scholarships</span>
@@ -757,12 +782,10 @@ export default function StudentDashboard() {
 
             <button
               onClick={() => {
-                setActiveTab("applications");
-                setIsSidebarOpen(false);
+                handleTabChange("applications");
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${
-                activeTab === "applications" ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-50"
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${activeTab === "applications" ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-50"
+                }`}
             >
               <FileCheck2 size={20} />
               <span className="font-medium">My Applications</span>
@@ -770,12 +793,10 @@ export default function StudentDashboard() {
 
             <button
               onClick={() => {
-                setActiveTab("interested");
-                setIsSidebarOpen(false);
+                handleTabChange("interested");
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${
-                activeTab === "interested" ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-50"
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition ${activeTab === "interested" ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-50"
+                }`}
             >
               <Heart size={20} />
               <span className="font-medium">Interested</span>
@@ -970,13 +991,13 @@ export default function StudentDashboard() {
               <section className="space-y-5">
                 {activeTab === "browse"
                   ? renderScholarshipList(
-                      scholarships,
-                      "No scholarships match your current filters. Try a different keyword, degree level, funding type, intake, or country filter."
-                    )
+                    scholarships,
+                    "No scholarships match your current filters. Try a different keyword, degree level, funding type, intake, or country filter."
+                  )
                   : renderScholarshipList(
-                      interestedScholarships,
-                      "You have not marked any scholarships as interested yet. Save scholarships from the Browse Scholarships tab to see them here."
-                    )}
+                    interestedScholarships,
+                    "You have not marked any scholarships as interested yet. Save scholarships from the Browse Scholarships tab to see them here."
+                  )}
               </section>
             </>
           )}
